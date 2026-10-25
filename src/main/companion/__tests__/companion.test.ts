@@ -4,6 +4,8 @@
  * - every API request needs a paired device's token; a revoked phone is refused at once
  * - only the stored token's hash is on disk
  * - phone actions run through the task tools, delete_task is not offered, and the board reloads
+ * - creating and merging a PR answer at once and finish in the background
+ * - requests naming a foreign host are refused (DNS rebinding)
  * - the server serves the built page and its assets, nothing else
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -16,6 +18,7 @@ const runTaskTool = vi.fn();
 vi.mock('../../insights/task-tools', () => ({
   runTaskTool: (...args: unknown[]) => runTaskTool(...args),
 }));
+vi.mock('../../app-logger', () => ({ appLog: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 vi.mock('../../project-store', () => ({
   projectStore: {
     getProjects: () => [{ id: 'p1', name: 'Workbench', path: '/secret/path' }],
@@ -24,7 +27,8 @@ vi.mock('../../project-store', () => ({
 }));
 
 import { CompanionStore } from '../companion-store';
-import { CompanionServer } from '../companion-server';
+import { CompanionServer, isAllowedHost } from '../companion-server';
+import { request as httpRequest } from 'node:http';
 
 let dir: string;
 let now: number;
@@ -159,6 +163,68 @@ describe('API', () => {
     runTaskTool.mockRejectedValue(new Error('Stop the task before editing it'));
     const refused = await api('POST', '/api/projects/p1/actions/update_task', { token, body: { taskId: '001-a' } });
     expect(refused).toEqual({ status: 400, body: { error: 'Stop the task before editing it' } });
+  });
+});
+
+describe('background actions', () => {
+  it('answers a merge at once, shows it running on the task, and keeps a failure until the next attempt', async () => {
+    const token = await pair();
+    let finishMerge!: (error?: Error) => void;
+    runTaskTool.mockImplementation(async (_context: unknown, tool: string) => {
+      if (tool === 'get_task') return { id: '002-b', title: 'B' };
+      return new Promise((resolve, reject) => {
+        finishMerge = (error) => (error ? reject(error) : resolve({ merged: true }));
+      });
+    });
+
+    const started = await api('POST', '/api/projects/p1/actions/merge_pull_request', { token, body: { taskId: '002-b' } });
+    expect(started).toEqual({ status: 202, body: { started: true, action: 'merge_pull_request' } });
+    expect((await api('GET', '/api/projects/p1/tasks/002-b', { token })).body.phoneAction).toMatchObject({ action: 'merge_pull_request', state: 'running' });
+    // A second press while it runs is refused
+    expect((await api('POST', '/api/projects/p1/actions/merge_pull_request', { token, body: { taskId: '002-b' } })).status).toBe(409);
+
+    finishMerge(new Error('The PR has conflicts Claude Code could not resolve'));
+    await vi.waitFor(async () => {
+      const task = await api('GET', '/api/projects/p1/tasks/002-b', { token });
+      expect(task.body.phoneAction).toMatchObject({ state: 'failed', error: 'The PR has conflicts Claude Code could not resolve' });
+    });
+
+    expect((await api('POST', '/api/projects/p1/actions/merge_pull_request', { token, body: { taskId: '002-b' } })).status).toBe(202);
+    finishMerge();
+    await vi.waitFor(async () => {
+      const task = await api('GET', '/api/projects/p1/tasks/002-b', { token });
+      expect(task.body).toEqual({ id: '002-b', title: 'B' });
+    });
+  });
+
+  it('needs a task id', async () => {
+    const token = await pair();
+    expect((await api('POST', '/api/projects/p1/actions/create_pull_request', { token, body: {} })).status).toBe(400);
+    expect(runTaskTool).not.toHaveBeenCalled();
+  });
+});
+
+describe('host check', () => {
+  it('accepts IP addresses, localhost and Tailscale names, and refuses other domains', () => {
+    for (const host of ['127.0.0.1:3770', 'localhost:3770', '[::1]:3770', '192.168.1.20:3770', 'desktop-d9dehsf.tail1234.ts.net']) {
+      expect(isAllowedHost(host), host).toBe(true);
+    }
+    for (const host of [undefined, '', 'evil.example:3770', 'localhost.evil.example', 'ts.net', 'a.b.ts.net.evil.example']) {
+      expect(isAllowedHost(host), String(host)).toBe(false);
+    }
+  });
+
+  it('refuses a request whose Host header names a foreign domain', async () => {
+    const status = await new Promise<number>((resolve, reject) => {
+      const port = Number(new URL(base).port);
+      httpRequest({ host: '127.0.0.1', port, path: '/api/projects', headers: { Host: `rebind.example:${port}` } }, (response) => {
+        response.resume();
+        resolve(response.statusCode ?? 0);
+      })
+        .on('error', reject)
+        .end();
+    });
+    expect(status).toBe(421);
   });
 });
 

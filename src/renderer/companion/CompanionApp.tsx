@@ -19,7 +19,9 @@ import {
 } from './api';
 
 /** How often an open screen refreshes while the page is visible */
-const REFRESH_MS = 5000;
+const BOARD_REFRESH_MS = 5000;
+/** A task's details run git commands for its worktree on the computer, so they refresh less often */
+const TASK_REFRESH_MS = 10000;
 const PROJECT_KEY = 'workbench.companion.project';
 
 type View =
@@ -30,8 +32,8 @@ type View =
 
 const columnOf = (task: TaskSummary): TaskStatusColumn => getTaskColumn(task.status as TaskStatus);
 
-/** Run `load` now and every REFRESH_MS while the page is visible */
-function useRefresh<T>(load: () => Promise<T>, onUnauthorized: () => void): { data: T | null; error: string | null; reload: () => void } {
+/** Run `load` now and every `intervalMs` while the page is visible */
+function useRefresh<T>(load: () => Promise<T>, onUnauthorized: () => void, intervalMs = BOARD_REFRESH_MS): { data: T | null; error: string | null; reload: () => void } {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadRef = useRef(load);
@@ -54,13 +56,13 @@ function useRefresh<T>(load: () => Promise<T>, onUnauthorized: () => void): { da
     reload();
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') reload();
-    }, REFRESH_MS);
+    }, intervalMs);
     document.addEventListener('visibilitychange', reload);
     return () => {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', reload);
     };
-  }, [reload]);
+  }, [reload, intervalMs]);
 
   return { data, error, reload };
 }
@@ -164,6 +166,7 @@ function PairScreen({ onPaired }: { onPaired: () => void }) {
     <Screen title={t('page.pair.title')}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">{t('page.pair.instructions')}</p>
+        <p className="text-sm text-muted-foreground">{t('page.pair.homeScreen')}</p>
         <label className="flex flex-col gap-1.5 text-sm">
           {t('page.pair.code')}
           <input
@@ -255,6 +258,7 @@ function BoardScreen({
   const load = useCallback(() => api.tasks(project.id), [project.id]);
   const { data, error, reload } = useRefresh(load, onUnauthorized);
   const [column, setColumn] = useState<TaskStatusColumn | null>(null);
+  const shownChip = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     try {
@@ -272,6 +276,11 @@ function BoardScreen({
 
   // Open on the column that most likely needs the user: Human Review, then In Progress
   const shown: TaskStatusColumn = column ?? (counts.human_review > 0 ? 'human_review' : counts.in_progress > 0 ? 'in_progress' : 'backlog');
+  // The column bar scrolls sideways; keep the shown column (Human Review is fifth) in view
+  useEffect(() => {
+    shownChip.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [shown]);
+
   const tasks = (data ?? []).filter((task) => columnOf(task) === shown).sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
   return (
@@ -292,6 +301,7 @@ function BoardScreen({
         {TASK_STATUS_COLUMNS.map((c) => (
           <button
             key={c}
+            ref={c === shown ? shownChip : undefined}
             type="button"
             onClick={() => setColumn(c)}
             className={cn(
@@ -344,7 +354,7 @@ function statusText(t: (key: string) => string, task: TaskSummary): string {
 function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: CompanionProject; taskId: string; onBack: () => void; onUnauthorized: () => void }) {
   const { t } = useTranslation(['companion', 'tasks']);
   const load = useCallback(() => api.task(project.id, taskId), [project.id, taskId]);
-  const { data: task, error, reload } = useRefresh(load, onUnauthorized);
+  const { data: task, error, reload } = useRefresh(load, onUnauthorized, TASK_REFRESH_MS);
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<string | null>(null);
@@ -367,8 +377,10 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
     }
   };
 
+  const prActionRunning = task?.phoneAction?.state === 'running';
+
   const actionButton = (action: string, label: string, args?: Record<string, unknown>, done?: string) => (
-    <Button key={action + JSON.stringify(args ?? {})} variant="outline" size="lg" disabled={busy !== null} onClick={() => void run(action, args, done)}>
+    <Button key={action + JSON.stringify(args ?? {})} variant="outline" size="lg" disabled={busy !== null || prActionRunning} onClick={() => void run(action, args, done)}>
       {busy === action ? <Loader2 className="h-4 w-4 animate-spin" /> : label}
     </Button>
   );
@@ -385,6 +397,7 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
   const running = task.status === 'in_progress' || task.status === 'ai_review';
   const inReview = column === 'human_review';
   const validation = task.run?.validation;
+  const phoneAction = task.phoneAction;
 
   return (
     <Screen title={task.title} onBack={onBack}>
@@ -396,12 +409,24 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
         {/* Actions the board allows from this column */}
         <section className="flex flex-col gap-2">
           {actionError && <Notice>{actionError}</Notice>}
-          {actionResult && <Notice>{actionResult}</Notice>}
+          {actionResult && !phoneAction && <Notice>{actionResult}</Notice>}
+          {phoneAction && (
+            <Notice>
+              {prActionRunning ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t(`companion:page.actions.running.${phoneAction.action}`)}
+                </span>
+              ) : (
+                t(`companion:page.actions.failed.${phoneAction.action}`, { error: phoneAction.error })
+              )}
+            </Notice>
+          )}
           {running && actionButton('stop_task', t('companion:page.actions.stop'))}
           {!running && task.allowedMoves.includes('in_progress') && actionButton('start_task', inReview ? t('companion:page.actions.resume') : t('companion:page.actions.start'))}
           {task.status === 'error' && actionButton('retry_task', t('companion:page.actions.retry'))}
-          {inReview && !task.prUrl && task.worktree && actionButton('create_pull_request', t('companion:page.actions.createPr'), {}, t('companion:page.actions.prCreated'))}
-          {task.prUrl && task.prState !== 'merged' && task.prState !== 'closed' && actionButton('merge_pull_request', t('companion:page.actions.mergePr'), {}, t('companion:page.actions.merged'))}
+          {inReview && !task.prUrl && task.worktree && !prActionRunning && actionButton('create_pull_request', t('companion:page.actions.createPr'), {}, t('companion:page.actions.prCreated'))}
+          {task.prUrl && task.prState !== 'merged' && task.prState !== 'closed' && !prActionRunning && actionButton('merge_pull_request', t('companion:page.actions.mergePr'), {}, t('companion:page.actions.merged'))}
           {task.prUrl && (
             <a href={task.prUrl} target="_blank" rel="noopener noreferrer" className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium hover:bg-accent">
               {t('companion:page.actions.openPr')}
@@ -429,7 +454,7 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
             />
             <Button
               size="lg"
-              disabled={busy !== null || !feedback.trim()}
+              disabled={busy !== null || prActionRunning || !feedback.trim()}
               onClick={() => void run('request_changes', { feedback }, t('companion:page.actions.revising')).then(() => setFeedback(''))}
             >
               {busy === 'request_changes' ? <Loader2 className="h-4 w-4 animate-spin" /> : t('companion:page.actions.sendFeedback')}
@@ -499,7 +524,7 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
 function TaskLogs({ project, taskId, onUnauthorized }: { project: CompanionProject; taskId: string; onUnauthorized: () => void }) {
   const { t } = useTranslation('companion');
   const load = useCallback(() => api.logs(project.id, taskId), [project.id, taskId]);
-  const { data, error } = useRefresh<LogEntry[]>(load, onUnauthorized);
+  const { data, error } = useRefresh<LogEntry[]>(load, onUnauthorized, TASK_REFRESH_MS);
   if (error) return <Notice>{error}</Notice>;
   if (!data) return <Loading />;
   if (data.length === 0) return <p className="text-sm text-muted-foreground">{t('page.task.noLogs')}</p>;

@@ -227,6 +227,9 @@ serves a phone page (`src/renderer/companion.html`, a second renderer entry) and
 tools (`insights/task-tools.ts`; `delete_task` is not offered). It listens on 127.0.0.1 (reached from the user's phone
 through `tailscale serve`) or on every interface (home network). A phone pairs with a one-time code and keeps a device
 token; `companion.json` in the app's data folder holds the settings and only the tokens' hashes.
+Creating and merging a PR answer 202 at once and finish in the background (the task's details carry `phoneAction`
+while one runs or after it fails). Requests whose `Host` header is not an IP address, `localhost` or a `*.ts.net` name
+are refused (DNS rebinding). Upstream divergence is recorded in `docs/DECISIONS.md`.
 
 ### Electron MCP (testing the app from a task)
 

@@ -81,6 +81,8 @@ export interface TaskDetail extends TaskSummary {
     summary?: string;
   };
   worktree?: { branch: string; baseBranch: string; commits: number; filesChanged: number; additions: number; deletions: number };
+  /** A PR action started from the phone that runs in the background (companion-api.ts) */
+  phoneAction?: { action: string; state: 'running' | 'failed'; error?: string; startedAt: string };
 }
 
 export interface LogEntry {

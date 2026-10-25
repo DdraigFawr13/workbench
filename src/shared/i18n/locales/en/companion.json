@@ -14,13 +14,13 @@
     "listen": {
       "label": "Reach it through",
       "localhost": "Tailscale",
-      "network": "Home network",
+      "network": "Home network only",
       "localhostDescription": "Only this computer can open the address; Tailscale passes your own devices through with HTTPS",
-      "networkDescription": "Any device on this network can open the page over plain HTTP; only paired phones can use it"
+      "networkDescription": "Plain HTTP: anyone on the same network can read a phone's token in transit, so use it only on a trusted home network. Windows asks once whether to allow Workbench through Windows Defender Firewall; allow it on private networks only"
     },
     "tailscale": {
       "label": "Tailscale",
-      "description": "Install Tailscale on this computer and the phone, sign in to both with the same account, then run this once on this computer and open the https address it prints on the phone"
+      "description": "Install Tailscale on this computer and the phone and sign in to both with the same account. In the Tailscale admin console, under DNS, switch on MagicDNS and HTTPS certificates; without both, Tailscale serves no https address. Then run this once on this computer and open the https address it prints on the phone"
     },
     "port": "Port",
     "portDescription": "From 1024 to 65535",
@@ -45,7 +45,8 @@
       "instructions": "On the computer, open Workbench Settings > Phone, select Show code, and type the code here.",
       "code": "Pairing code",
       "deviceName": "Name of this phone",
-      "submit": "Pair"
+      "submit": "Pair",
+      "homeScreen": "On iPhone, a page added to the home screen keeps storage separate from Safari. Add the page to the home screen first, then pair from the home screen icon; a pairing made in Safari does not carry over."
     },
     "projects": {
       "title": "Projects",
@@ -101,13 +102,21 @@
       "stop": "Stop",
       "retry": "Retry from a clean slate",
       "createPr": "Create pull request",
-      "prCreated": "Pull request created.",
+      "prCreated": "Creating the pull request. This screen shows the result when it is done.",
       "mergePr": "Merge pull request",
-      "merged": "Pull request merged.",
+      "merged": "Merging the pull request. Conflicts can take some minutes; this screen shows the result when it is done.",
       "openPr": "Open pull request",
       "moveTo": "Move to {{column}}",
       "sendFeedback": "Send feedback",
-      "revising": "Claude Code is applying the feedback."
+      "revising": "Claude Code is applying the feedback.",
+      "running": {
+        "create_pull_request": "Creating the pull request",
+        "merge_pull_request": "Merging the pull request"
+      },
+      "failed": {
+        "create_pull_request": "Creating the pull request failed: {{error}}",
+        "merge_pull_request": "Merging the pull request failed: {{error}}"
+      }
     },
     "create": {
       "title": "New task",

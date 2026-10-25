@@ -8,10 +8,13 @@
  * use over the home network.
  *
  * Every /api request but pairing needs a device token in the Authorization header (never a
- * cookie, so another web page can't send it).
+ * cookie, so another web page can't send it). Requests must name the server by an IP address,
+ * localhost or a Tailscale `*.ts.net` name in their Host header: a web page on another domain
+ * that rebinds its name to 127.0.0.1 is refused (DNS rebinding).
  */
 
 import { createServer, request as httpRequest, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { isIP } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -81,6 +84,15 @@ function readBody(request: IncomingMessage): Promise<Record<string, unknown>> {
   });
 }
 
+/** Whether a Host header names this server, not a foreign domain resolved to it */
+export function isAllowedHost(host: string | undefined): boolean {
+  if (!host) return false;
+  // "name:port", "1.2.3.4:port" or "[::1]:port"
+  const name = (host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.replace(/:\d+$/, '')).toLowerCase();
+  if (isIP(name)) return true;
+  return name === 'localhost' || /^[a-z0-9-]+\.[a-z0-9-]+\.ts\.net$/.test(name);
+}
+
 /** The addresses a phone can open for this config */
 export function companionUrls(config: CompanionConfig): string[] {
   if (config.listen === 'localhost') return [`http://127.0.0.1:${config.port}`];
@@ -132,6 +144,7 @@ export class CompanionServer {
   }
 
   private async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!isAllowedHost(request.headers.host)) return send(response, 421, { error: 'Unknown host' });
     const url = new URL(request.url ?? '/', 'http://companion');
     if (url.pathname === '/api' || url.pathname.startsWith('/api/')) return this.handleApi(request, response, url);
     if (request.method !== 'GET' && request.method !== 'HEAD') return send(response, 405, { error: 'Method not allowed' });

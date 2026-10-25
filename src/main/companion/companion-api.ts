@@ -12,9 +12,14 @@
  *   GET  /api/projects/:projectId/tasks/:taskId        a task's details
  *   GET  /api/projects/:projectId/tasks/:taskId/logs   its latest log entries (?limit=)
  *   POST /api/projects/:projectId/actions/:action      run an action (body: its arguments)
+ *
+ * Creating and merging a PR run Claude Code and can take minutes, longer than a phone keeps a
+ * request open. They answer 202 at once and continue in the background; the task's details then
+ * carry `phoneAction` (running, or failed with its error) until the next one starts.
  */
 
 import type { CompanionDevice } from '../../shared/types/companion';
+import { appLog } from '../app-logger';
 import { runTaskTool } from '../insights/task-tools';
 import { projectStore } from '../project-store';
 
@@ -35,6 +40,20 @@ export const COMPANION_ACTIONS = [
   'archive_tasks',
   'unarchive_tasks',
 ] as const;
+
+/** Actions that answer at once and finish in the background */
+export const BACKGROUND_ACTIONS: readonly string[] = ['create_pull_request', 'merge_pull_request'];
+
+/** The latest background action of a task, shown on its details */
+export interface PhoneAction {
+  action: string;
+  state: 'running' | 'failed';
+  error?: string;
+  startedAt: string;
+}
+
+/** By `projectId/taskId`; a finished action is removed, a failed one stays until the next starts */
+const phoneActions = new Map<string, PhoneAction>();
 
 export interface CompanionApiRequest {
   method: string;
@@ -85,12 +104,42 @@ export async function handleCompanionApi(request: CompanionApiRequest, deps: Com
 
   if (request.method === 'GET' && sub === 'tasks') {
     if (parts.length === 4) return run('list_tasks', {});
-    if (parts.length === 5) return run('get_task', { taskId: id });
+    if (parts.length === 5) {
+      const result = await run('get_task', { taskId: id });
+      const phoneAction = phoneActions.get(`${projectId}/${id}`);
+      if (result.status === 200 && phoneAction && result.body && typeof result.body === 'object') {
+        result.body = { ...result.body, phoneAction };
+      }
+      return result;
+    }
     if (parts.length === 6 && leaf === 'logs') return run('get_task_logs', { taskId: id, limit: Number(request.query.get('limit')) || undefined });
   }
   if (request.method === 'POST' && sub === 'actions' && parts.length === 5) {
     if (!(COMPANION_ACTIONS as readonly string[]).includes(id)) return fail(403, `"${id}" is not available from the phone`);
+    if (BACKGROUND_ACTIONS.includes(id)) return runInBackground(id, request.body, context);
     return run(id, request.body);
   }
   return fail(404, 'Not found');
+}
+
+function runInBackground(action: string, args: Record<string, unknown>, context: { projectId: string; onTasksChanged: () => void }): CompanionApiResponse {
+  const taskId = typeof args.taskId === 'string' ? args.taskId : '';
+  if (!taskId) return fail(400, 'taskId is required');
+  const key = `${context.projectId}/${taskId}`;
+  const current = phoneActions.get(key);
+  if (current?.state === 'running') return fail(409, `The task is already running "${current.action}"`);
+
+  const entry: PhoneAction = { action, state: 'running', startedAt: new Date().toISOString() };
+  phoneActions.set(key, entry);
+  runTaskTool(context, action, args).then(
+    () => {
+      if (phoneActions.get(key) === entry) phoneActions.delete(key);
+    },
+    (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      appLog.error(`[companion] ${action} failed for task ${taskId}: ${message}`);
+      if (phoneActions.get(key) === entry) phoneActions.set(key, { ...entry, state: 'failed', error: message });
+    }
+  );
+  return { status: 202, body: { started: true, action } };
 }
