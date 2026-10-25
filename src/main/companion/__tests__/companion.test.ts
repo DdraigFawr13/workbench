@@ -4,6 +4,7 @@
  * - every API request needs a paired device's token; a revoked phone is refused at once
  * - only the stored token's hash is on disk
  * - phone actions run through the task tools, delete_task is not offered, and the board reloads
+ * - the agent windows' status lists the project's windows, those asking for the user first
  * - creating and merging a PR answer at once and finish in the background
  * - requests naming a foreign host are refused (DNS rebinding)
  * - the server serves the built page and its assets, nothing else
@@ -22,11 +23,12 @@ vi.mock('../../app-logger', () => ({ appLog: { info: vi.fn(), warn: vi.fn(), err
 vi.mock('../../project-store', () => ({
   projectStore: {
     getProjects: () => [{ id: 'p1', name: 'Workbench', path: '/secret/path' }],
-    getProject: (id: string) => (id === 'p1' ? { id: 'p1', name: 'Workbench' } : undefined),
+    getProject: (id: string) => (id === 'p1' ? { id: 'p1', name: 'Workbench', path: '/secret/path' } : undefined),
   },
 }));
 
 import { CompanionStore } from '../companion-store';
+import { resetAgentWindowStatusesForTests, setAgentWindowStatus } from '../../agent-status/agent-window-status-store';
 import { CompanionServer, isAllowedHost } from '../companion-server';
 import { request as httpRequest } from 'node:http';
 
@@ -142,6 +144,26 @@ describe('API', () => {
     expect(runTaskTool).toHaveBeenLastCalledWith(expect.anything(), 'get_task_logs', { taskId: '001-a', limit: 20 });
 
     expect((await api('GET', '/api/projects/nope/tasks', { token })).status).toBe(404);
+  });
+
+  it("lists the project's agent windows with a status, those asking for the user first", async () => {
+    const token = await pair();
+    resetAgentWindowStatusesForTests();
+    setAgentWindowStatus('t1', { title: 'Tests', projectPath: '/secret/path', status: 'working' }, new Date('2026-10-25T10:00:00Z'));
+    setAgentWindowStatus('t2', { title: 'Docs', projectPath: '/secret/path', status: 'needs-input' }, new Date('2026-10-25T10:01:00Z'));
+    setAgentWindowStatus('t3', { title: 'Other', projectPath: '/other/project', status: 'finished' });
+    expect((await api('GET', '/api/projects/p1/agents', { token })).body).toEqual([
+      { id: 't2', title: 'Docs', status: 'needs-input', since: '2026-10-25T10:01:00.000Z' },
+      { id: 't1', title: 'Tests', status: 'working', since: '2026-10-25T10:00:00.000Z' },
+    ]);
+
+    // A status that stays keeps the time it started; a closed window is gone
+    setAgentWindowStatus('t1', { title: 'Tests', projectPath: '/secret/path', status: 'working' }, new Date('2026-10-25T10:05:00Z'));
+    setAgentWindowStatus('t2', null);
+    expect((await api('GET', '/api/projects/p1/agents', { token })).body).toEqual([
+      { id: 't1', title: 'Tests', status: 'working', since: '2026-10-25T10:00:00.000Z' },
+    ]);
+    resetAgentWindowStatusesForTests();
   });
 
   it('runs allowed actions, refuses delete_task, and reports tool errors', async () => {

@@ -17,6 +17,7 @@ import type {
   TerminalWorktreeResult,
   OtherWorktreeInfo,
   TerminalProfileChangedEvent,
+  AgentWindowStatusReport,
 } from '../../shared/types';
 
 /** Type for proactive swap notification events */
@@ -32,6 +33,7 @@ export interface TerminalAPI {
   createTerminal: (options: TerminalCreateOptions) => Promise<IPCResult>;
   destroyTerminal: (id: string) => Promise<IPCResult>;
   sendTerminalInput: (id: string, data: string) => void;
+  reportAgentWindowStatus: (id: string, report: AgentWindowStatusReport | null) => void;
   resizeTerminal: (id: string, cols: number, rows: number) => Promise<IPCResult<{ success: boolean }>>;
   invokeCLIInTerminal: (id: string, cwd?: string) => void;
   resumeTaskSessionInTerminal: (id: string, options: import('../../shared/types').TerminalTaskSessionOptions) => void;
@@ -122,6 +124,9 @@ export const createTerminalAPI = (): TerminalAPI => ({
 
   sendTerminalInput: (id: string, data: string): void =>
     ipcRenderer.send(IPC_CHANNELS.TERMINAL_INPUT, id, data),
+
+  reportAgentWindowStatus: (id: string, report: AgentWindowStatusReport | null): void =>
+    ipcRenderer.send(IPC_CHANNELS.TERMINAL_AGENT_STATUS, id, report),
 
   resizeTerminal: (id: string, cols: number, rows: number): Promise<IPCResult<{ success: boolean }>> =>
     ipcRenderer.invoke(IPC_CHANNELS.TERMINAL_RESIZE, id, cols, rows),

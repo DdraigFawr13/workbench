@@ -22,6 +22,7 @@ export * from './claude-code';
 export * from './live-agent';
 export * from './window';
 export * from './companion';
+export * from './agent-status';
 
 // IPC types (must be last to use types from other modules)
 export * from './ipc';

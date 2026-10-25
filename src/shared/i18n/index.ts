@@ -12,6 +12,7 @@ import enTaskReview from './locales/en/taskReview.json';
 import enTerminal from './locales/en/terminal.json';
 import enErrors from './locales/en/errors.json';
 import enCompanion from './locales/en/companion.json';
+import enAgentStatus from './locales/en/agentStatus.json';
 
 
 const defaultNS = 'common';
@@ -27,7 +28,8 @@ const resources = {
     taskReview: enTaskReview,
     terminal: enTerminal,
     errors: enErrors,
-    companion: enCompanion
+    companion: enCompanion,
+    agentStatus: enAgentStatus
   }
 } as const;
 
@@ -38,7 +40,7 @@ i18n
     lng: 'en',
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'dialogs', 'taskReview', 'terminal', 'errors', 'companion'],
+    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'dialogs', 'taskReview', 'terminal', 'errors', 'companion', 'agentStatus'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

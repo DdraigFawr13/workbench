@@ -93,11 +93,21 @@ export interface LogEntry {
   content: string;
 }
 
+/** An agent window of the project and what its Claude Code session is doing */
+export interface AgentWindowSummary {
+  id: string;
+  title: string;
+  status: 'working' | 'needs-input' | 'finished' | 'idle';
+  /** When the status last changed (ISO 8601) */
+  since: string;
+}
+
 const projectPath = (projectId: string) => `/api/projects/${encodeURIComponent(projectId)}`;
 
 export const api = {
   projects: () => request<CompanionProject[]>('GET', '/api/projects'),
   tasks: (projectId: string) => request<TaskSummary[]>('GET', `${projectPath(projectId)}/tasks`),
+  agents: (projectId: string) => request<AgentWindowSummary[]>('GET', `${projectPath(projectId)}/agents`),
   task: (projectId: string, taskId: string) => request<TaskDetail>('GET', `${projectPath(projectId)}/tasks/${encodeURIComponent(taskId)}`),
   logs: (projectId: string, taskId: string, limit = 30) =>
     request<LogEntry[]>('GET', `${projectPath(projectId)}/tasks/${encodeURIComponent(taskId)}/logs?limit=${limit}`),

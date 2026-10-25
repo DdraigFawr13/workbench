@@ -26,6 +26,7 @@ import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerShellRuntimeHandlers } from './shell-runtime-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
+import { registerAgentStatusHandlers } from './agent-status-handlers';
 import { registerWindowHandlers, type WindowHandlerDeps } from './window-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
 import { notificationService } from '../notification-service';
@@ -100,6 +101,9 @@ export function setupIpcHandlers(
 
   // Phone companion (pairing, devices, its server)
   registerCompanionHandlers(getMainWindow);
+
+  // Agent windows' status (working, needs input, finished) for the phone companion
+  registerAgentStatusHandlers();
 
   console.warn('[IPC] All handler modules registered successfully');
 }

@@ -7,6 +7,7 @@ import { formatDateTime } from '../../shared/utils/format-date-time';
 import { Button } from '../components/ui/button';
 import { MarkdownContent } from '../components/ui/markdown-content';
 import { cn } from '../lib/utils';
+import { AgentStatusIndicator } from '../agent-status/AgentStatusIndicator';
 import {
   api,
   forgetToken,
@@ -257,6 +258,9 @@ function BoardScreen({
   const { t } = useTranslation(['companion', 'tasks']);
   const load = useCallback(() => api.tasks(project.id), [project.id]);
   const { data, error, reload } = useRefresh(load, onUnauthorized);
+  const loadAgents = useCallback(() => api.agents(project.id), [project.id]);
+  const { data: agents, reload: reloadAgents } = useRefresh(loadAgents, onUnauthorized);
+  const shownAgents = (agents ?? []).filter((agent) => agent.status !== 'idle');
   const [column, setColumn] = useState<TaskStatusColumn | null>(null);
   const shownChip = useRef<HTMLButtonElement | null>(null);
 
@@ -288,7 +292,7 @@ function BoardScreen({
       title={project.name}
       action={
         <>
-          <button type="button" onClick={reload} aria-label={t('companion:page.refresh')} className="rounded-lg p-2 hover:bg-accent">
+          <button type="button" onClick={() => { reload(); reloadAgents(); }} aria-label={t('companion:page.refresh')} className="rounded-lg p-2 hover:bg-accent">
             <RefreshCw className="h-4 w-4" />
           </button>
           <button type="button" onClick={onProjects} aria-label={t('companion:page.projects.switch')} className="rounded-lg p-2 hover:bg-accent">
@@ -297,6 +301,24 @@ function BoardScreen({
         </>
       }
     >
+      {shownAgents.length > 0 && (
+        <section className="mb-4 flex flex-col gap-2" aria-label={t('companion:page.agents.title')}>
+          <h2 className="font-mono text-xs text-muted-foreground">{t('companion:page.agents.title')}</h2>
+          {/* herdr's agent list: the window's title, then its state */}
+          <ul className="flex flex-col divide-y divide-border rounded-xl border border-border font-mono">
+            {shownAgents.map((agent) => (
+              <li key={agent.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm">{agent.title}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(agent.since)}</div>
+                </div>
+                <AgentStatusIndicator status={agent.status} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {TASK_STATUS_COLUMNS.map((c) => (
           <button

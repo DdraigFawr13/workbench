@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { AgentsIcon, TerminalPromptIcon } from '../icons/app-icons';
 import { TaskSelector } from './TaskSelector';
 import { WorktreeSelector } from './WorktreeSelector';
+import { AgentStatusBadge } from '../../agent-status/AgentStatusBadge';
 
 interface TerminalHeaderProps {
   terminalId: string;
@@ -107,6 +108,7 @@ export function TerminalHeader({
             onNewTaskClick={onNewTaskClick}
           />
         )}
+        {isCLIMode && <AgentStatusBadge terminalId={terminalId} />}
       </div>
       <div className="flex items-center gap-1">
         {/* Expand/collapse button */}

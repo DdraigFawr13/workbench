@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { AgentNodeIcon, GraphIcon, InsightsIcon, KanbanIcon, ProjectIcon, SettingsIcon as Settings } from './icons/app-icons';
 import { useMemoryGraphStore } from '../stores/memory-graph-store';
+import { AgentsAttentionDot } from '../agent-status/AgentsAttentionDot';
+import { AgentsSidebarList } from '../agent-status/AgentsSidebarList';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import {
@@ -206,10 +208,11 @@ export function Sidebar({
         // Kanban stays available without a project: it hosts the welcome page
         disabled={!selectedProjectId && item.id !== 'kanban'}
         aria-current={isActive ? 'page' : undefined}
-        className={rowClass(isActive)}
+        className={cn(rowClass(isActive), 'relative')}
       >
         {renderRowIcon(item.icon)}
         {!isCollapsed && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
+        {item.id === 'terminals' && isCollapsed && <AgentsAttentionDot projectPath={selectedProject?.path} />}
       </button>
     );
 
@@ -296,6 +299,7 @@ export function Sidebar({
               {navItems.filter((item) => item.id !== 'memory' || hasMemoryGraph).map(renderNavItem)}
             </nav>
           </div>
+          {!isCollapsed && <AgentsSidebarList projectPath={selectedProject?.path} onSelect={() => handleNavClick('terminals')} />}
         </ScrollArea>
 
         {/* Footer: settings with account + usage status beside it */}

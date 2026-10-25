@@ -53,6 +53,9 @@
       "none": "No projects are open in Workbench.",
       "switch": "Switch project"
     },
+    "agents": {
+      "title": "agents"
+    },
     "board": {
       "empty": "No tasks in this column.",
       "newTask": "New task"

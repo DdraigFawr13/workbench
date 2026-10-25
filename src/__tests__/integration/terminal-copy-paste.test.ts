@@ -48,6 +48,9 @@ vi.mock('@xterm/xterm', () => ({
   })
 }));
 
+// The status watcher reads the screen of a real xterm; these tests cover copy and paste
+vi.mock('../../renderer/agent-status/agent-window-watcher', () => ({ watchAgentWindow: () => () => {} }));
+
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: vi.fn().mockImplementation(function() {
     return {
