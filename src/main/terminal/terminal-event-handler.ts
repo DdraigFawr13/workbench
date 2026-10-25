@@ -24,6 +24,16 @@ export interface EventHandlerCallbacks {
 const lastBusyState = new Map<string, boolean>();
 
 /**
+ * How long after a window enters Claude mode a shell prompt is not taken as Claude exiting. The
+ * shell echoes the typed launch line, which starts with its prompt ("user@host:~/repo$ claude ..."),
+ * and that echo arrives right after the window enters Claude mode, before Claude Code starts.
+ */
+export const CLAUDE_EXIT_GRACE_MS = 3000;
+
+// When each terminal's output was first seen in its current Claude mode
+const claudeModeSince = new Map<string, number>();
+
+/**
  * Handle terminal data output
  */
 export function handleTerminalData(
@@ -42,6 +52,9 @@ export function handleTerminalData(
   // Check for onboarding complete (after login, Claude shows ready state)
   callbacks.onOnboardingComplete(terminal, data);
 
+  if (!terminal.isCLIMode) claudeModeSince.delete(terminal.id);
+  else if (!claudeModeSince.has(terminal.id)) claudeModeSince.set(terminal.id, Date.now());
+
   // Detect Claude busy state changes (only when in Claude mode)
   if (terminal.isCLIMode) {
     const busyState = OutputParser.detectClaudeBusyState(data);
@@ -57,11 +70,13 @@ export function handleTerminalData(
     }
 
     // Detect Claude exit (returned to shell prompt)
-    // Only check if not busy - busy output takes precedence
-    if (busyState !== 'busy' && OutputParser.detectClaudeExit(data)) {
+    // Only check if not busy - busy output takes precedence - and not while the launch line echoes
+    const pastLaunch = Date.now() - (claudeModeSince.get(terminal.id) ?? 0) >= CLAUDE_EXIT_GRACE_MS;
+    if (pastLaunch && busyState !== 'busy' && OutputParser.detectClaudeExit(data)) {
       callbacks.onClaudeExit(terminal);
       // Clear busy state tracking since Claude has exited
       lastBusyState.delete(terminal.id);
+      claudeModeSince.delete(terminal.id);
     }
   }
 }
