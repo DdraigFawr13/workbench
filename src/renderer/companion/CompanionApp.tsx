@@ -257,6 +257,9 @@ function BoardScreen({
   const { t } = useTranslation(['companion', 'tasks']);
   const load = useCallback(() => api.tasks(project.id), [project.id]);
   const { data, error, reload } = useRefresh(load, onUnauthorized);
+  const loadAgents = useCallback(() => api.agents(project.id), [project.id]);
+  const { data: agents, reload: reloadAgents } = useRefresh(loadAgents, onUnauthorized);
+  const shownAgents = (agents ?? []).filter((agent) => agent.status !== 'idle');
   const [column, setColumn] = useState<TaskStatusColumn | null>(null);
   const shownChip = useRef<HTMLButtonElement | null>(null);
 
@@ -288,7 +291,7 @@ function BoardScreen({
       title={project.name}
       action={
         <>
-          <button type="button" onClick={reload} aria-label={t('companion:page.refresh')} className="rounded-lg p-2 hover:bg-accent">
+          <button type="button" onClick={() => { reload(); reloadAgents(); }} aria-label={t('companion:page.refresh')} className="rounded-lg p-2 hover:bg-accent">
             <RefreshCw className="h-4 w-4" />
           </button>
           <button type="button" onClick={onProjects} aria-label={t('companion:page.projects.switch')} className="rounded-lg p-2 hover:bg-accent">
@@ -297,6 +300,22 @@ function BoardScreen({
         </>
       }
     >
+      {shownAgents.length > 0 && (
+        <section className="mb-4 flex flex-col gap-2" aria-label={t('companion:page.agents.title')}>
+          <h2 className="text-sm font-semibold">{t('companion:page.agents.title')}</h2>
+          <ul className="flex flex-col gap-2">
+            {shownAgents.map((agent) => (
+              <li key={agent.id} className="rounded-xl border border-border px-4 py-3">
+                <div className="text-sm font-medium">{agent.title}</div>
+                <div className={cn('mt-1 text-xs', agent.status === 'needs-input' ? 'text-warning' : 'text-muted-foreground')}>
+                  {[t(`companion:page.agents.${agent.status}`), formatDateTime(agent.since)].join(' · ')}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {TASK_STATUS_COLUMNS.map((c) => (
           <button

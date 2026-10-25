@@ -11,6 +11,7 @@
  *   GET  /api/projects/:projectId/tasks                the board (archived tasks left out)
  *   GET  /api/projects/:projectId/tasks/:taskId        a task's details
  *   GET  /api/projects/:projectId/tasks/:taskId/logs   its latest log entries (?limit=)
+ *   GET  /api/projects/:projectId/agents               its agent windows' status (working, needs input, finished)
  *   POST /api/projects/:projectId/actions/:action      run an action (body: its arguments)
  *
  * Creating and merging a PR run Claude Code and can take minutes, longer than a phone keeps a
@@ -18,10 +19,17 @@
  * carry `phoneAction` (running, or failed with its error) until the next one starts.
  */
 
+import path from 'path';
 import type { CompanionDevice } from '../../shared/types/companion';
 import { appLog } from '../app-logger';
 import { runTaskTool } from '../insights/task-tools';
 import { projectStore } from '../project-store';
+import { getAgentWindowStatuses } from '../agent-status/agent-window-status-store';
+import { isWindows } from '../platform';
+
+/** Whether two project paths name the same folder (case-folded on Windows) */
+const samePath = (a: string, b: string) =>
+  isWindows() ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase() : path.resolve(a) === path.resolve(b);
 
 /**
  * Task tools the phone may run. delete_task is left out: it can't be undone, so it stays a
@@ -90,7 +98,12 @@ export async function handleCompanionApi(request: CompanionApiRequest, deps: Com
   if (request.method === 'GET' && parts.length === 2) {
     return ok(projectStore.getProjects().map((project) => ({ id: project.id, name: project.name })));
   }
-  if (!projectId || !projectStore.getProject(projectId)) return fail(404, 'The project is not open in Workbench');
+  const project = projectId ? projectStore.getProject(projectId) : undefined;
+  if (!project) return fail(404, 'The project is not open in Workbench');
+
+  if (request.method === 'GET' && sub === 'agents' && parts.length === 4) {
+    return ok(getAgentWindowStatuses(project.path, samePath).map(({ terminalId, title, status, since }) => ({ id: terminalId, title, status, since })));
+  }
 
   const context = { projectId, onTasksChanged: () => deps.onTasksChanged(projectId) };
   const run = async (tool: string, args: Record<string, unknown>): Promise<CompanionApiResponse> => {

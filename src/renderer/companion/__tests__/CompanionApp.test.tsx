@@ -4,6 +4,7 @@
 /**
  * The phone page against a mocked companion API:
  * - the board opens on Human Review and scrolls that column's button into view
+ * - the board lists the agent windows that work, ask or finished, and leaves idle ones out
  * - while a PR action runs in the background, the task screen shows it and disables moves,
  *   feedback and the PR buttons; a failed action shows its error
  */
@@ -16,6 +17,7 @@ import type { TaskDetail, TaskSummary } from '../api';
 const api = vi.hoisted(() => ({
   projects: vi.fn(),
   tasks: vi.fn(),
+  agents: vi.fn(),
   task: vi.fn(),
   logs: vi.fn(),
   action: vi.fn(),
@@ -51,9 +53,21 @@ beforeEach(() => {
   HTMLElement.prototype.scrollIntoView = scrollIntoView;
   api.projects.mockResolvedValue([{ id: 'p1', name: 'Workbench' }]);
   api.tasks.mockResolvedValue(tasks);
+  api.agents.mockResolvedValue([]);
 });
 
 describe('board', () => {
+  it('lists the agent windows that work, ask or finished, and leaves idle ones out', async () => {
+    api.agents.mockResolvedValue([
+      { id: 't1', title: 'Docs window', status: 'needs-input', since: now },
+      { id: 't2', title: 'Idle window', status: 'idle', since: now },
+    ]);
+    render(<CompanionApp />);
+    expect(await screen.findByText('Docs window')).toBeInTheDocument();
+    expect(screen.getByText(/Needs input on the desktop/)).toBeInTheDocument();
+    expect(screen.queryByText('Idle window')).not.toBeInTheDocument();
+  });
+
   it('opens on Human Review and scrolls its column button into view', async () => {
     render(<CompanionApp />);
     const column = await screen.findByRole('button', { name: /Human Review 1/ });
