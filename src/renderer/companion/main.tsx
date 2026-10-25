@@ -6,7 +6,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { CompanionApp } from './CompanionApp';
 import '../styles/globals.css';
-import './companion.css';
 
 // Follow the phone's light or dark setting
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
