@@ -112,22 +112,35 @@ function Screen({ title, onBack, action, children }: { title: string; onBack?: (
   const { t } = useTranslation('companion');
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-card px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
         {onBack && (
-          <button type="button" onClick={onBack} aria-label={t('page.back')} className="-ml-2 rounded-lg p-2 hover:bg-accent">
-            <ArrowLeft className="h-5 w-5" />
+          <button type="button" onClick={onBack} aria-label={t('page.back')} className="-ml-2 p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
           </button>
         )}
-        <h1 className="min-w-0 flex-1 truncate text-base font-semibold">{title}</h1>
+        {/* herdr's top bar: the app's name in the accent colour, then where the user is */}
+        <span aria-hidden="true" className="text-sm text-primary">workbench</span>
+        <span aria-hidden="true" className="text-sm text-muted-foreground">/</span>
+        <h1 className="min-w-0 flex-1 truncate text-sm">{title}</h1>
         {action}
       </header>
-      <main className="flex-1 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">{children}</main>
+      <main className="flex-1 px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3">{children}</main>
     </div>
   );
 }
 
+/** A bordered pane with its title in muted lower case, as herdr draws its panes */
+function Pane({ title, children, className }: { title?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section aria-label={title} className={cn('border border-border bg-card', className)}>
+      {title && <h2 className="border-b border-border px-3 py-1.5 text-xs lowercase text-[var(--pane-title)]">{title}</h2>}
+      {children}
+    </section>
+  );
+}
+
 function Notice({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl bg-segment-track px-4 py-3 text-sm text-foreground">{children}</div>;
+  return <div className="border border-border border-l-2 border-l-primary bg-card px-3 py-2 text-sm text-foreground">{children}</div>;
 }
 
 function Loading() {
@@ -168,7 +181,7 @@ function PairScreen({ onPaired }: { onPaired: () => void }) {
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">{t('page.pair.instructions')}</p>
         <p className="text-sm text-muted-foreground">{t('page.pair.homeScreen')}</p>
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs lowercase text-[var(--pane-title)]">
           {t('page.pair.code')}
           <input
             value={code}
@@ -176,12 +189,12 @@ function PairScreen({ onPaired }: { onPaired: () => void }) {
             autoCapitalize="characters"
             autoComplete="one-time-code"
             spellCheck={false}
-            className="h-12 rounded-lg border border-border bg-transparent px-3 font-mono text-lg tracking-widest uppercase"
+            className="h-12 border px-3 text-lg tracking-widest text-foreground uppercase"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs lowercase text-[var(--pane-title)]">
           {t('page.pair.deviceName')}
-          <input value={name} onChange={(event) => setName(event.target.value)} className="h-11 rounded-lg border border-border bg-transparent px-3" />
+          <input value={name} onChange={(event) => setName(event.target.value)} className="h-11 border px-3 text-sm normal-case text-foreground" />
         </label>
         {error && <Notice>{error}</Notice>}
         <Button type="submit" size="lg" disabled={busy || code.trim().length < 8}>
@@ -222,22 +235,27 @@ function ProjectsScreen({ onOpen, onUnauthorized }: { onOpen: (project: Companio
       {error && <Notice>{error}</Notice>}
       {!data && !error && <Loading />}
       {data?.length === 0 && <Notice>{t('page.projects.none')}</Notice>}
-      <ul className="flex flex-col gap-2">
-        {data?.map((project) => (
-          <li key={project.id}>
-            <button
-              type="button"
-              onClick={() => {
-                opened.current = true;
-                onOpen(project);
-              }}
-              className="w-full rounded-xl border border-border px-4 py-3 text-left text-sm font-medium hover:bg-accent"
-            >
-              {project.name}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {data && data.length > 0 && (
+        <Pane title={t('page.projects.title')}>
+          <ul className="flex flex-col divide-y divide-border">
+            {data.map((project) => (
+              <li key={project.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    opened.current = true;
+                    onOpen(project);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-3 text-left text-sm hover:bg-accent"
+                >
+                  <span aria-hidden="true" className="text-primary">›</span>
+                  {project.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Pane>
+      )}
     </Screen>
   );
 }
@@ -292,22 +310,21 @@ function BoardScreen({
       title={project.name}
       action={
         <>
-          <button type="button" onClick={() => { reload(); reloadAgents(); }} aria-label={t('companion:page.refresh')} className="rounded-lg p-2 hover:bg-accent">
+          <button type="button" onClick={() => { reload(); reloadAgents(); }} aria-label={t('companion:page.refresh')} className="p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
             <RefreshCw className="h-4 w-4" />
           </button>
-          <button type="button" onClick={onProjects} aria-label={t('companion:page.projects.switch')} className="rounded-lg p-2 hover:bg-accent">
+          <button type="button" onClick={onProjects} aria-label={t('companion:page.projects.switch')} className="-mr-2 p-2 text-muted-foreground hover:bg-accent hover:text-foreground">
             <ChevronDown className="h-4 w-4" />
           </button>
         </>
       }
     >
       {shownAgents.length > 0 && (
-        <section className="mb-4 flex flex-col gap-2" aria-label={t('companion:page.agents.title')}>
-          <h2 className="font-mono text-xs text-muted-foreground">{t('companion:page.agents.title')}</h2>
+        <Pane title={t('companion:page.agents.title')} className="mb-3">
           {/* herdr's agent list: the window's title, then its state */}
-          <ul className="flex flex-col divide-y divide-border rounded-xl border border-border font-mono">
+          <ul className="flex flex-col divide-y divide-border">
             {shownAgents.map((agent) => (
-              <li key={agent.id} className="flex items-center gap-3 px-4 py-3">
+              <li key={agent.id} className="flex items-center gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm">{agent.title}</div>
                   <div className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(agent.since)}</div>
@@ -316,48 +333,77 @@ function BoardScreen({
               </li>
             ))}
           </ul>
-        </section>
+        </Pane>
       )}
 
-      <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {TASK_STATUS_COLUMNS.map((c) => (
-          <button
-            key={c}
-            ref={c === shown ? shownChip : undefined}
-            type="button"
-            onClick={() => setColumn(c)}
-            className={cn(
-              'shrink-0 rounded-full border px-3 py-1.5 text-sm',
-              c === shown ? 'border-foreground bg-foreground text-background' : 'border-border hover:bg-accent'
-            )}
-          >
-            {t(`tasks:columns.${c}`)} {counts[c]}
-          </button>
-        ))}
-      </div>
-
-      {error && <Notice>{error}</Notice>}
-      {!data && !error && <Loading />}
-      {data && tasks.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{t('companion:page.board.empty')}</p>}
-
-      <ul className="flex flex-col gap-2">
-        {tasks.map((task) => (
-          <li key={task.id}>
-            <button type="button" onClick={() => onOpenTask(task.id)} className="w-full rounded-xl border border-border px-4 py-3 text-left hover:bg-accent">
-              <div className="text-sm font-medium">{task.title}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {[statusText(t, task), formatDateTime(task.updatedAt)].filter(Boolean).join(' · ')}
-              </div>
+      <section className="border border-border bg-card" aria-label={t(`tasks:columns.${shown}`)}>
+        {/* The board's columns as herdr's tab bar: the shown one in the accent colour, underlined */}
+        <div className="flex overflow-x-auto border-b border-border">
+          {TASK_STATUS_COLUMNS.map((c) => (
+            <button
+              key={c}
+              ref={c === shown ? shownChip : undefined}
+              type="button"
+              onClick={() => setColumn(c)}
+              aria-pressed={c === shown}
+              className={cn(
+                'shrink-0 border-b-2 px-3 py-2 text-xs lowercase',
+                c === shown ? 'border-primary bg-accent text-primary' : 'border-transparent text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              {t(`tasks:columns.${c}`)} <span className={c === shown ? 'text-primary' : 'text-[var(--pane-title)]'}>{counts[c]}</span>
             </button>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
 
-      <Button size="lg" className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 gap-2 bg-background shadow-lg" onClick={onCreate}>
+        {error && <div className="p-3"><Notice>{error}</Notice></div>}
+        {!data && !error && <Loading />}
+        {data && tasks.length === 0 && <p className="px-3 py-6 text-center text-xs lowercase text-muted-foreground">{t('companion:page.board.empty')}</p>}
+
+        <ul className="flex flex-col divide-y divide-border">
+          {tasks.map((task) => (
+            <li key={task.id}>
+              <button type="button" onClick={() => onOpenTask(task.id)} className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-accent">
+                <TaskDot task={task} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm">{task.title}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {[statusText(t, task), formatDateTime(task.updatedAt)].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {/* Room for the New task button, so it never covers the last task */}
+      <div className="h-20" />
+
+      <Button size="lg" className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 gap-2 bg-card" onClick={onCreate}>
         <Plus className="h-4 w-4" />
         {t('companion:page.board.newTask')}
       </Button>
     </Screen>
+  );
+}
+
+/**
+ * A task's state as a herdr dot: yellow while Claude Code works on it, red when it failed, teal
+ * while it waits for the user's review, green when done, hollow while it waits to start
+ */
+function TaskDot({ task }: { task: TaskSummary }) {
+  const column = columnOf(task);
+  const dot =
+    task.status === 'error' ? 'text-destructive'
+      : column === 'in_progress' || column === 'ai_review' ? 'text-warning animate-pulse'
+        : column === 'human_review' ? 'text-info'
+          : column === 'done' ? 'text-success'
+            : 'text-muted-foreground';
+  const hollow = column === 'backlog' || column === 'queue';
+  return (
+    <span aria-hidden="true" className={cn('mt-0.5 text-xs leading-5', dot)}>
+      {hollow ? '○' : '●'}
+    </span>
   );
 }
 
@@ -423,9 +469,13 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
 
   return (
     <Screen title={task.title} onBack={onBack}>
-      <div className="flex flex-col gap-5">
-        <div className="text-sm text-muted-foreground">
-          {[t(`tasks:columns.${column}`), statusText(t, task), task.worktree && t('companion:page.task.diff', task.worktree)].filter(Boolean).join(' · ')}
+      <div className="flex flex-col gap-3">
+        {/* herdr's status line: the task's dot and column, then what else is known */}
+        <div className="flex items-start gap-2 border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          <TaskDot task={task} />
+          <span className="leading-5">
+            {[t(`tasks:columns.${column}`), statusText(t, task), task.worktree && t('companion:page.task.diff', task.worktree)].filter(Boolean).join(' · ')}
+          </span>
         </div>
 
         {/* Actions the board allows from this column */}
@@ -450,7 +500,7 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
           {inReview && !task.prUrl && task.worktree && !prActionRunning && actionButton('create_pull_request', t('companion:page.actions.createPr'), {}, t('companion:page.actions.prCreated'))}
           {task.prUrl && task.prState !== 'merged' && task.prState !== 'closed' && !prActionRunning && actionButton('merge_pull_request', t('companion:page.actions.mergePr'), {}, t('companion:page.actions.merged'))}
           {task.prUrl && (
-            <a href={task.prUrl} target="_blank" rel="noopener noreferrer" className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium hover:bg-accent">
+            <a href={task.prUrl} target="_blank" rel="noopener noreferrer" className="flex h-12 items-center justify-center gap-2 border border-border text-sm lowercase hover:bg-accent">
               {t('companion:page.actions.openPr')}
               <ExternalLink className="h-4 w-4" />
             </a>
@@ -465,65 +515,68 @@ function TaskScreen({ project, taskId, onBack, onUnauthorized }: { project: Comp
         </section>
 
         {inReview && task.status !== 'pr_created' && (
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold">{t('companion:page.task.requestChanges')}</h2>
-            <textarea
-              value={feedback}
-              onChange={(event) => setFeedback(event.target.value)}
-              rows={4}
-              placeholder={t('companion:page.task.feedbackPlaceholder')}
-              className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
-            />
-            <Button
-              size="lg"
-              disabled={busy !== null || prActionRunning || !feedback.trim()}
-              onClick={() => void run('request_changes', { feedback }, t('companion:page.actions.revising')).then(() => setFeedback(''))}
-            >
-              {busy === 'request_changes' ? <Loader2 className="h-4 w-4 animate-spin" /> : t('companion:page.actions.sendFeedback')}
-            </Button>
-          </section>
+          <Pane title={t('companion:page.task.requestChanges')}>
+            <div className="flex flex-col gap-2 p-3">
+              <textarea
+                value={feedback}
+                onChange={(event) => setFeedback(event.target.value)}
+                rows={4}
+                placeholder={t('companion:page.task.feedbackPlaceholder')}
+                className="border px-3 py-2 text-sm"
+              />
+              <Button
+                size="lg"
+                disabled={busy !== null || prActionRunning || !feedback.trim()}
+                onClick={() => void run('request_changes', { feedback }, t('companion:page.actions.revising')).then(() => setFeedback(''))}
+              >
+                {busy === 'request_changes' ? <Loader2 className="h-4 w-4 animate-spin" /> : t('companion:page.actions.sendFeedback')}
+              </Button>
+            </div>
+          </Pane>
         )}
 
         {validation && (
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold">{t('companion:page.task.validation', { status: t(`companion:page.validation.${validation.status}`) })}</h2>
-            <p className="text-sm">{validation.summary}</p>
-            <ul className="flex flex-col gap-1 text-sm">
-              {validation.checks.map((check) => (
-                <li key={check.name}>{t(check.passed ? 'companion:page.task.checkPassed' : 'companion:page.task.checkFailed', { name: check.name })}</li>
-              ))}
-              {validation.findings.filter((finding) => !finding.fixed).map((finding) => (
-                <li key={finding.description}>{t('companion:page.task.finding', finding)}</li>
-              ))}
-            </ul>
-          </section>
+          <Pane title={t('companion:page.task.validation', { status: t(`companion:page.validation.${validation.status}`) })}>
+            <div className="flex flex-col gap-2 p-3">
+              <p className="text-sm">{validation.summary}</p>
+              <ul className="flex flex-col gap-1 text-sm">
+                {validation.checks.map((check) => (
+                  <li key={check.name}>{t(check.passed ? 'companion:page.task.checkPassed' : 'companion:page.task.checkFailed', { name: check.name })}</li>
+                ))}
+                {validation.findings.filter((finding) => !finding.fixed).map((finding) => (
+                  <li key={finding.description}>{t('companion:page.task.finding', finding)}</li>
+                ))}
+              </ul>
+            </div>
+          </Pane>
         )}
 
         {task.run?.summary && (
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold">{t('companion:page.task.summary')}</h2>
-            <MarkdownContent>{task.run.summary}</MarkdownContent>
-          </section>
+          <Pane title={t('companion:page.task.summary')}>
+            <div className="p-3">
+              <MarkdownContent>{task.run.summary}</MarkdownContent>
+            </div>
+          </Pane>
         )}
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">{t('companion:page.task.description')}</h2>
-          <MarkdownContent>{task.description}</MarkdownContent>
-        </section>
+        <Pane title={t('companion:page.task.description')}>
+          <div className="p-3">
+            <MarkdownContent>{task.description}</MarkdownContent>
+          </div>
+        </Pane>
 
         {task.subtasks.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-semibold">{t('companion:page.task.steps')}</h2>
-            <ul className="flex flex-col gap-1 text-sm">
+          <Pane title={t('companion:page.task.steps')}>
+            <ul className="flex flex-col divide-y divide-border text-sm">
               {task.subtasks.map((subtask, index) => (
-                <li key={index}>{t(`companion:page.subtask.${subtask.status}`, { title: subtask.title })}</li>
+                <li key={index} className="px-3 py-2">{t(`companion:page.subtask.${subtask.status}`, { title: subtask.title })}</li>
               ))}
             </ul>
-          </section>
+          </Pane>
         )}
 
         {task.run?.triage && (
-          <p className="text-xs text-muted-foreground">
+          <p className="px-1 text-xs text-[var(--pane-title)]">
             {t('companion:page.task.triage', {
               model: task.run.triage.model,
               effort: task.run.triage.effort,
@@ -549,13 +602,13 @@ function TaskLogs({ project, taskId, onUnauthorized }: { project: CompanionProje
   const { data, error } = useRefresh<LogEntry[]>(load, onUnauthorized, TASK_REFRESH_MS);
   if (error) return <Notice>{error}</Notice>;
   if (!data) return <Loading />;
-  if (data.length === 0) return <p className="text-sm text-muted-foreground">{t('page.task.noLogs')}</p>;
+  if (data.length === 0) return <p className="text-xs lowercase text-muted-foreground">{t('page.task.noLogs')}</p>;
   return (
-    <ol className="flex flex-col gap-2">
+    <ol className="flex flex-col divide-y divide-border border border-border bg-card">
       {data.map((entry, index) => (
-        <li key={index} className="rounded-lg bg-segment-track px-3 py-2 text-xs">
-          <div className="text-muted-foreground">{[entry.step, entry.tool ?? entry.type, formatDateTime(entry.at)].join(' · ')}</div>
-          <div className="mt-1 whitespace-pre-wrap break-words font-mono">{entry.content}</div>
+        <li key={index} className="px-3 py-2 text-xs">
+          <div className="text-[var(--pane-title)]">{[entry.step, entry.tool ?? entry.type, formatDateTime(entry.at)].join(' · ')}</div>
+          <div className="mt-1 whitespace-pre-wrap break-words">{entry.content}</div>
         </li>
       ))}
     </ol>
@@ -590,26 +643,26 @@ function CreateScreen({ project, onDone }: { project: CompanionProject; onDone: 
   return (
     <Screen title={t('page.create.title')} onBack={() => onDone()}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs lowercase text-[var(--pane-title)]">
           {t('page.create.description')}
           <textarea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={8}
             placeholder={t('page.create.descriptionPlaceholder')}
-            className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm"
+            className="border px-3 py-2 text-sm normal-case text-foreground"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs lowercase text-[var(--pane-title)]">
           {t('page.create.titleLabel')}
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={t('page.create.titlePlaceholder')}
-            className="h-11 rounded-lg border border-border bg-transparent px-3"
+            className="h-11 border px-3 text-sm normal-case text-foreground"
           />
         </label>
-        <label className="flex items-center gap-3 text-sm">
+        <label className="flex items-center gap-3 text-sm lowercase">
           <input type="checkbox" checked={start} onChange={(event) => setStart(event.target.checked)} className="h-5 w-5" />
           {t('page.create.start')}
         </label>
