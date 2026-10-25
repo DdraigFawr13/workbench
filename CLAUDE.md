@@ -220,6 +220,14 @@ graphify's search commands (Insights limits Bash to those commands). Installing 
 `~/.claude` and each Claude profile's config dir, after an install or update), and agent windows
 get `GRAPHIFY_OUT` and an `--append-system-prompt` hint pointing `/graphify` at `.workbench/knowledge`.
 
+### Phone companion
+
+Settings > Phone switches on a small HTTP server in the main process (`src/main/companion/`, off by default) that
+serves a phone page (`src/renderer/companion.html`, a second renderer entry) and a JSON API over the Claude chat's task
+tools (`insights/task-tools.ts`; `delete_task` is not offered). It listens on 127.0.0.1 (reached from the user's phone
+through `tailscale serve`) or on every interface (home network). A phone pairs with a one-time code and keeps a device
+token; `companion.json` in the app's data folder holds the settings and only the tokens' hashes.
+
 ### Electron MCP (testing the app from a task)
 
 Run `npm run dev` and switch on Electron in Settings > Connectors (or in the task's connectors). Claude Code can
@@ -277,7 +285,7 @@ runs without `CLAUDE_CONFIG_DIR`, keeps its sign-in in `~/.claude.json` and its 
 English is the only supported language. Translation files: `src/shared/i18n/locales/en/*.json`.
 
 **Namespaces:** `common`, `navigation`, `settings`, `dialogs`, `tasks`, `taskReview`, `terminal`, `errors`,
-`welcome`.
+`welcome`, `companion`.
 
 ```tsx
 import { useTranslation } from 'react-i18next';

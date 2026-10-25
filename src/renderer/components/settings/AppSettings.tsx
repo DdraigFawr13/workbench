@@ -6,7 +6,8 @@ import {
   CircleUserRound,
   CodeXml,
   Download,
-  Blocks
+  Blocks,
+  Smartphone
 } from 'lucide-react';
 import { AgentNodeIcon, GearIcon, ProjectOutlineIcon } from '../icons/app-icons';
 
@@ -29,6 +30,7 @@ import { GraphifySettings } from './GraphifySettings';
 import { AccountSettings } from './AccountSettings';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
 import { ConnectorsSettings } from './ConnectorsSettings';
+import { CompanionSettings } from './CompanionSettings';
 import { useProjectStore } from '../../stores/project-store';
 import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
 import {
@@ -49,7 +51,7 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings pages (claude.ai layout: related settings grouped on one page)
-type AppPage = 'general' | 'accounts' | 'agents' | 'connectors' | 'devtools' | 'updates';
+type AppPage = 'general' | 'accounts' | 'agents' | 'connectors' | 'phone' | 'devtools' | 'updates';
 
 // Section ids accepted from the rest of the app; older ids map onto the page that now holds them
 export type AppSection = AppPage | 'agent' | 'claude-code' | 'terminal-fonts' | 'appearance' | 'display' | 'notifications' | 'paths' | 'debug' | 'integrations' | 'api-profiles';
@@ -90,6 +92,7 @@ const topNavItemsConfig: TopNavItem[] = [
   { kind: 'app', id: 'agents', icon: AgentNodeIcon, iconClassName: 'h-[16px] w-[16px]' },
   { kind: 'project', id: 'general', icon: ProjectOutlineIcon },
   { kind: 'app', id: 'connectors', icon: Blocks },
+  { kind: 'app', id: 'phone', icon: Smartphone },
   { kind: 'app', id: 'devtools', icon: CodeXml },
   { kind: 'app', id: 'updates', icon: Download }
 ];
@@ -227,6 +230,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <ClaudeCodeTaskSettings settings={settings} onSettingsChange={setSettings} />;
       case 'connectors':
         return <ConnectorsSettings settings={settings} onSettingsChange={setSettings} />;
+      case 'phone':
+        return <CompanionSettings />;
       case 'devtools':
         return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="paths" />;
       case 'updates':

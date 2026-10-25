@@ -11,3 +11,4 @@ export { claudeProfileMock } from './claude-profile-mock';
 export { insightsMock } from './insights-mock';
 export { infrastructureMock } from './infrastructure-mock';
 export { settingsMock } from './settings-mock';
+export { companionMock } from './companion-mock';

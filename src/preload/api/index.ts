@@ -15,6 +15,7 @@ import { ProfileAPI, createProfileAPI } from './profile-api';
 import { QueueAPI, createQueueAPI } from './queue-api';
 import { WindowAPI, createWindowAPI } from './modules/window-api';
 import { ShellRuntimeAPI, createShellRuntimeAPI } from './modules/shell-runtime-api';
+import { CompanionAPI, createCompanionAPI } from './modules/companion-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -32,7 +33,8 @@ export interface ElectronAPI extends
   McpAPI,
   ProfileAPI,
   WindowAPI,
-  ShellRuntimeAPI {
+  ShellRuntimeAPI,
+  CompanionAPI {
   /** Queue routing API for rate limit recovery */
   queue: QueueAPI;
 }
@@ -53,6 +55,7 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createProfileAPI(),
   ...createWindowAPI(),
   ...createShellRuntimeAPI(),
+  ...createCompanionAPI(),
   queue: createQueueAPI()  // Queue routing for rate limit recovery
 });
 

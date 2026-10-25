@@ -25,6 +25,7 @@ import { registerLiveAgentHandlers } from './live-agent-handlers';
 import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerShellRuntimeHandlers } from './shell-runtime-handlers';
+import { registerCompanionHandlers } from './companion-handlers';
 import { registerWindowHandlers, type WindowHandlerDeps } from './window-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
 import { notificationService } from '../notification-service';
@@ -96,6 +97,9 @@ export function setupIpcHandlers(
 
   // Windows shell setting (runtime status, WSL availability, relaunch to apply)
   registerShellRuntimeHandlers();
+
+  // Phone companion (pairing, devices, its server)
+  registerCompanionHandlers(getMainWindow);
 
   console.warn('[IPC] All handler modules registered successfully');
 }

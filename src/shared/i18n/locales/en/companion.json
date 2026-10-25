@@ -1,0 +1,122 @@
+{
+  "settings": {
+    "title": "Phone companion",
+    "description": "See and steer this computer's tasks from a phone browser",
+    "enabled": "Use from a phone",
+    "enabledDescription": "Serve the companion page to paired phones while Workbench runs",
+    "saveFailed": "The setting could not be saved",
+    "status": {
+      "label": "Status",
+      "off": "Off",
+      "running": "Listening on {{urls}}",
+      "error": "Not running: {{error}}"
+    },
+    "listen": {
+      "label": "Reach it through",
+      "localhost": "Tailscale",
+      "network": "Home network",
+      "localhostDescription": "Only this computer can open the address; Tailscale passes your own devices through with HTTPS",
+      "networkDescription": "Any device on this network can open the page over plain HTTP; only paired phones can use it"
+    },
+    "tailscale": {
+      "label": "Tailscale",
+      "description": "Install Tailscale on this computer and the phone, sign in to both with the same account, then run this once on this computer and open the https address it prints on the phone"
+    },
+    "port": "Port",
+    "portDescription": "From 1024 to 65535",
+    "devices": {
+      "title": "Paired phones",
+      "pair": "Pair a phone",
+      "pairDescription": "Open the companion address on the phone and type the code shown here",
+      "codeDescription": "Type this code on the phone; it works once, until {{time}}",
+      "createCode": "Show code",
+      "newCode": "New code",
+      "none": "No phones paired",
+      "paired": "Paired {{time}}",
+      "lastSeen": "last used {{time}}",
+      "revoke": "Revoke"
+    }
+  },
+  "page": {
+    "back": "Back",
+    "refresh": "Refresh",
+    "pair": {
+      "title": "Pair with Workbench",
+      "instructions": "On the computer, open Workbench Settings > Phone, select Show code, and type the code here.",
+      "code": "Pairing code",
+      "deviceName": "Name of this phone",
+      "submit": "Pair"
+    },
+    "projects": {
+      "title": "Projects",
+      "none": "No projects are open in Workbench.",
+      "switch": "Switch project"
+    },
+    "board": {
+      "empty": "No tasks in this column.",
+      "newTask": "New task"
+    },
+    "reviewReason": {
+      "completed": "Ready for review",
+      "errors": "Failed",
+      "qa_rejected": "Checks failed",
+      "stopped": "Stopped"
+    },
+    "pr": {
+      "open": "PR open",
+      "merged": "PR merged",
+      "closed": "PR closed"
+    },
+    "validation": {
+      "passed": "passed",
+      "failed": "failed",
+      "partial": "partly passed"
+    },
+    "subtask": {
+      "pending": "Not started: {{title}}",
+      "in_progress": "In progress: {{title}}",
+      "completed": "Done: {{title}}",
+      "failed": "Failed: {{title}}"
+    },
+    "task": {
+      "title": "Task",
+      "diff": "{{filesChanged}} files, +{{additions}} -{{deletions}}",
+      "requestChanges": "Request changes",
+      "feedbackPlaceholder": "What should change",
+      "validation": "Validation {{status}}",
+      "checkPassed": "Passed: {{name}}",
+      "checkFailed": "Failed: {{name}}",
+      "finding": "Open finding ({{severity}}): {{description}}",
+      "summary": "Summary",
+      "description": "Description",
+      "steps": "Steps",
+      "triage": "Model {{model}}, effort {{effort}}, cost ${{cost}}",
+      "showLogs": "Show latest log entries",
+      "hideLogs": "Hide log entries",
+      "noLogs": "No log entries yet."
+    },
+    "actions": {
+      "start": "Start",
+      "resume": "Resume",
+      "stop": "Stop",
+      "retry": "Retry from a clean slate",
+      "createPr": "Create pull request",
+      "prCreated": "Pull request created.",
+      "mergePr": "Merge pull request",
+      "merged": "Pull request merged.",
+      "openPr": "Open pull request",
+      "moveTo": "Move to {{column}}",
+      "sendFeedback": "Send feedback",
+      "revising": "Claude Code is applying the feedback."
+    },
+    "create": {
+      "title": "New task",
+      "description": "What should be done",
+      "descriptionPlaceholder": "The instructions for Claude Code, with context and acceptance criteria",
+      "titleLabel": "Title (optional)",
+      "titlePlaceholder": "Written from the description when empty",
+      "start": "Start it now",
+      "submit": "Create task"
+    }
+  }
+}

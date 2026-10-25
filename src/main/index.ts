@@ -74,6 +74,7 @@ import { safeSendToRenderer, setRendererWindowsProvider } from './ipc-handlers/u
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
 import { projectStore } from './project-store';
 import { migrateProjectDataDirs } from './data-dir-migration';
+import { stopCompanionServer } from './ipc-handlers/companion-handlers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Single instance: launching the installed app again (Start menu, taskbar, shortcut) shows the
@@ -907,6 +908,9 @@ app.on('before-quit', (event) => {
     try {
       // Stop the Live agent relay worker (removes its discovery files, closes its hook server)
       await liveAgentRelay.shutdown();
+
+      // Close the phone companion's server (no phone can start work while the app quits)
+      await stopCompanionServer();
 
       // Kill all running agent processes
       if (agentManager) {

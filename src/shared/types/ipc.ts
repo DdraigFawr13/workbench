@@ -521,6 +521,16 @@ export interface ElectronAPI {
   /** Restart the app (applies a changed shell setting) */
   relaunchApp: () => Promise<IPCResult>;
 
+  // Phone companion (Settings > Phone)
+  /** The companion's settings, whether its server runs, its addresses and the paired phones */
+  getCompanionStatus: () => Promise<IPCResult<import('./companion').CompanionStatus>>;
+  /** Change the settings; the server starts, restarts or stops to match */
+  setCompanionConfig: (changes: Partial<import('./companion').CompanionConfig>) => Promise<IPCResult<import('./companion').CompanionStatus>>;
+  /** A one-time code for pairing a phone (replaces the previous one) */
+  createCompanionPairingCode: () => Promise<IPCResult<import('./companion').CompanionPairingCode>>;
+  /** Sign a paired phone out */
+  revokeCompanionDevice: (deviceId: string) => Promise<IPCResult<import('./companion').CompanionStatus>>;
+
   // Queue Routing API (rate limit recovery)
   queue: import('../../preload/api/queue-api').QueueAPI;
 }

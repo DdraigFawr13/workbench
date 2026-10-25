@@ -15,7 +15,8 @@ import {
   claudeProfileMock,
   insightsMock,
   infrastructureMock,
-  settingsMock
+  settingsMock,
+  companionMock
 } from './mocks';
 
 // Check if we're in a browser (not Electron)
@@ -235,7 +236,10 @@ const browserMockAPI: ElectronAPI = {
       success: false,
       message: 'Connection test not available in browser mode'
     }
-  })
+  }),
+
+  // Phone companion
+  ...companionMock
 };
 
 /**
