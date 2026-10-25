@@ -7,10 +7,13 @@
  * - the board lists the agent windows that work, ask or finished, and leaves idle ones out
  * - while a PR action runs in the background, the task screen shows it and disables moves,
  *   feedback and the PR buttons; a failed action shows its error
+ * - a notification's address opens its task
+ * - the notifications panel says why plain HTTP and iPhone Safari outside the home screen can't
+ *   receive notifications
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '../../../shared/i18n';
 import type { TaskDetail, TaskSummary } from '../api';
 
@@ -54,6 +57,9 @@ beforeEach(() => {
   api.projects.mockResolvedValue([{ id: 'p1', name: 'Workbench' }]);
   api.tasks.mockResolvedValue(tasks);
   api.agents.mockResolvedValue([]);
+  api.task.mockResolvedValue(detail());
+  api.logs.mockResolvedValue([]);
+  window.history.replaceState(null, '', '/');
 });
 
 describe('board', () => {
@@ -101,5 +107,31 @@ describe('task screen', () => {
     expect(await screen.findByText('Merging the pull request failed: Conflicts remain')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Merge pull request' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Move to Done' })).toBeEnabled();
+  });
+});
+
+describe('notifications', () => {
+  it("opens the task a notification names and leaves the address plain", async () => {
+    window.history.replaceState(null, '', '/?project=p1&task=004-merge');
+    render(<CompanionApp />);
+    expect(await screen.findByText('Add a CSV export button.')).toBeInTheDocument();
+    expect(api.task).toHaveBeenCalledWith('p1', '004-merge');
+    expect(window.location.search).toBe('');
+  });
+
+  it('says that plain HTTP pages get no notifications', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    render(<CompanionApp />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+    expect(screen.getByText(/need the https address from Tailscale/)).toBeInTheDocument();
+  });
+
+  it('tells iPhone Safari to add the page to the home screen', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
+    const userAgent = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)');
+    render(<CompanionApp />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+    expect(screen.getByText(/Add to Home Screen/)).toBeInTheDocument();
+    userAgent.mockRestore();
   });
 });

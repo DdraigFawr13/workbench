@@ -7,6 +7,8 @@
  * `tailscale serve` reaches it with HTTPS for the user's own devices, or on every interface for
  * use over the home network.
  *
+ * It also serves the service worker that shows Web Push notifications (companion-notifier.ts).
+ *
  * Every /api request but pairing needs a device token in the Authorization header (never a
  * cookie, so another web page can't send it). Requests must name the server by an IP address,
  * localhost or a Tailscale `*.ts.net` name in their Host header: a web page on another domain
@@ -24,12 +26,18 @@ import { handleCompanionApi, type CompanionApiDeps } from './companion-api';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const PAGE = 'companion.html';
+/**
+ * Files from the renderer's public folder the page needs at the root: the service worker that shows
+ * notifications (its scope is the folder it is served from), the install manifest and its icon
+ */
+const ROOT_FILES = ['companion-sw.js', 'companion.webmanifest', 'companion-icon.png'];
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.woff2': 'font/woff2',
@@ -175,7 +183,7 @@ export class CompanionServer {
 
     const result = await handleCompanionApi(
       { method: request.method ?? 'GET', path: url.pathname, query: url.searchParams, body, device },
-      { onTasksChanged: this.options.onTasksChanged }
+      { onTasksChanged: this.options.onTasksChanged, push: this.options.push }
     );
     send(response, result.status, result.body);
   }
@@ -185,7 +193,8 @@ export class CompanionServer {
     // Vite serves the page's source modules from many paths in development
     if (this.options.devServerUrl) return this.proxyToDevServer(file, response);
     // The page and the files it loads (built into assets/), nothing else from the renderer folder
-    if (file !== PAGE && !file.startsWith('assets/')) return send(response, 404, { error: 'Not found' });
+    const rootFile = file === PAGE || ROOT_FILES.includes(file);
+    if (!rootFile && !file.startsWith('assets/')) return send(response, 404, { error: 'Not found' });
 
     const root = path.resolve(this.options.rendererDir);
     const resolved = path.resolve(root, file);
@@ -199,8 +208,8 @@ export class CompanionServer {
     response.writeHead(200, {
       ...SECURITY_HEADERS,
       'Content-Type': CONTENT_TYPES[path.extname(resolved)] ?? 'application/octet-stream',
-      // Built assets have hashed names; the page itself must not be cached past an update
-      'Cache-Control': file === PAGE ? 'no-cache' : 'public, max-age=31536000, immutable',
+      // Built assets have hashed names; the page and the root files must not be cached past an update
+      'Cache-Control': rootFile ? 'no-cache' : 'public, max-age=31536000, immutable',
     }).end(content);
   }
 

@@ -142,6 +142,7 @@ export function CompanionSettings() {
               description={[
                 t('companion:settings.devices.paired', { time: formatDateTime(device.pairedAt) }),
                 device.lastSeenAt ? t('companion:settings.devices.lastSeen', { time: formatDateTime(device.lastSeenAt) }) : null,
+                device.notifications ? t('companion:settings.devices.notifications') : null,
               ].filter(Boolean).join(' · ')}
             >
               <Button variant="outline" size="sm" onClick={() => void revoke(device.id)}>

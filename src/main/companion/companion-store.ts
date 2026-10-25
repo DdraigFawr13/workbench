@@ -5,12 +5,15 @@
  * The phone companion's settings and paired phones, kept in `companion.json` in the app's data
  * folder. A phone pairs by sending a one-time code shown in Settings and gets a device token;
  * only the token's SHA-256 hash is stored, so the file can't be used to sign in.
+ *
+ * It also keeps the server's VAPID key pair, which signs Web Push messages, and each phone's push
+ * subscription. Revoking a phone removes its subscription with it.
  */
 
 import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { CompanionConfig, CompanionDevice, CompanionPairingCode } from '../../shared/types/companion';
+import type { CompanionConfig, CompanionDevice, CompanionPairingCode, CompanionPushSubscription } from '../../shared/types/companion';
 
 export const DEFAULT_COMPANION_CONFIG: CompanionConfig = { enabled: false, port: 47821, listen: 'localhost' };
 
@@ -24,13 +27,37 @@ const MAX_CODE_ATTEMPTS = 5;
 const LAST_SEEN_WRITE_INTERVAL_MS = 60 * 1000;
 const MAX_DEVICE_NAME = 60;
 
-interface StoredDevice extends CompanionDevice {
+interface StoredDevice extends Omit<CompanionDevice, 'notifications'> {
   tokenHash: string;
+  push?: CompanionPushSubscription;
+}
+
+/** The key pair that signs Web Push messages (base64url, as the web-push package makes them) */
+export interface VapidKeys {
+  publicKey: string;
+  privateKey: string;
 }
 
 interface StoredData {
   config: CompanionConfig;
   devices: StoredDevice[];
+  vapid?: VapidKeys;
+}
+
+/** A device as the API and Settings show it: no token hash, no subscription */
+const toPublic = ({ tokenHash: _tokenHash, push, ...device }: StoredDevice): CompanionDevice => ({ ...device, notifications: push !== undefined });
+
+/** Whether a phone sent a subscription the push services can use */
+export function isPushSubscription(value: unknown): value is CompanionPushSubscription {
+  if (!value || typeof value !== 'object') return false;
+  const { endpoint, keys } = value as Partial<CompanionPushSubscription>;
+  return (
+    typeof endpoint === 'string' &&
+    endpoint.startsWith('https://') &&
+    !!keys &&
+    typeof keys.p256dh === 'string' &&
+    typeof keys.auth === 'string'
+  );
 }
 
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -53,6 +80,7 @@ export class CompanionStore {
         return {
           config: { ...DEFAULT_COMPANION_CONFIG, ...raw.config },
           devices: Array.isArray(raw.devices) ? raw.devices.filter((device) => device?.id && device.tokenHash) : [],
+          ...(raw.vapid?.publicKey && raw.vapid.privateKey ? { vapid: raw.vapid } : {}),
         };
       }
     } catch {
@@ -80,7 +108,7 @@ export class CompanionStore {
   }
 
   listDevices(): CompanionDevice[] {
-    return this.data.devices.map(({ tokenHash: _tokenHash, ...device }) => device);
+    return this.data.devices.map(toPublic);
   }
 
   /** A new one-time pairing code; it replaces the previous one */
@@ -118,8 +146,7 @@ export class CompanionStore {
     };
     this.data.devices.push(device);
     this.save();
-    const { tokenHash: _tokenHash, ...publicDevice } = device;
-    return { token, device: publicDevice };
+    return { token, device: toPublic(device) };
   }
 
   /** The paired device a token belongs to, or null */
@@ -133,8 +160,7 @@ export class CompanionStore {
       device.lastSeenAt = new Date(now).toISOString();
       this.save();
     }
-    const { tokenHash: _tokenHash, ...publicDevice } = device;
-    return publicDevice;
+    return toPublic(device);
   }
 
   revokeDevice(id: string): boolean {
@@ -143,5 +169,37 @@ export class CompanionStore {
     if (this.data.devices.length === before) return false;
     this.save();
     return true;
+  }
+
+  /** The VAPID key pair, made with `generate` the first time it is needed */
+  getVapidKeys(generate: () => VapidKeys): VapidKeys {
+    if (!this.data.vapid) {
+      this.data.vapid = generate();
+      this.save();
+    }
+    return { ...this.data.vapid };
+  }
+
+  /** Store a phone's push subscription, or remove it (null) */
+  setPushSubscription(deviceId: string, subscription: CompanionPushSubscription | null): boolean {
+    const device = this.data.devices.find((candidate) => candidate.id === deviceId);
+    if (!device) return false;
+    if (subscription) device.push = { endpoint: subscription.endpoint, keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth } };
+    else delete device.push;
+    this.save();
+    return true;
+  }
+
+  /** The phones that receive notifications */
+  listPushSubscriptions(): { deviceId: string; subscription: CompanionPushSubscription }[] {
+    return this.data.devices.flatMap((device) => (device.push ? [{ deviceId: device.id, subscription: device.push }] : []));
+  }
+
+  /** The push service no longer knows a subscription (404 or 410): forget it */
+  removePushEndpoint(endpoint: string): void {
+    const device = this.data.devices.find((candidate) => candidate.push?.endpoint === endpoint);
+    if (!device) return;
+    delete device.push;
+    this.save();
   }
 }

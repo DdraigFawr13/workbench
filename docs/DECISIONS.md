@@ -2,6 +2,12 @@
 
 Decisions for this copy of Workbench, newest first. Each entry has a status, the decision and why.
 
+## 2026-10-25: Phone notifications through Web Push with the web-push package
+
+- **Status:** Accepted
+- **Decision:** The phone companion sends notifications with Web Push, through the `web-push` npm package (bundled into the main process). A paired phone switches them on from the board's bell button; the server keeps its VAPID key pair and each phone's subscription in `companion.json`. A phone is notified when a task becomes ready for review, fails its checks, fails, is paused by a rate limit or has its pull request merged, and when an agent window needs input or finishes a turn out of view. Moves made by hand, stopped runs and tasks restored at startup notify nothing. Push works only on the https address from `tailscale serve`; on iPhone it also needs iOS 16.4 or later and the page added to the home screen.
+- **Why:** Morgan chose the `web-push` package over a hand-written implementation of the push encryption and over no notifications (2026-10-25), as recommended: it is the standard library for the protocol, and hand-written encryption is more work and more prone to error. Notifications are phase 2 of the plan (audit item 5): knowing when a task needs Morgan is the main value of a phone companion. Payloads are encrypted for the phone (RFC 8291), so the push service (Apple, Google, Mozilla) cannot read them.
+
 ## 2026-10-25: Read agent window status from the screen, as herdr does
 
 - **Status:** Accepted
