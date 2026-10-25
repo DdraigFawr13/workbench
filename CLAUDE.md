@@ -17,7 +17,9 @@ reviews, requests changes (same session continues) or merges.
 - **Autonomous Tasks** — Each task is delegated to Claude Code (`claude -p`) in its worktree; Claude Code decides
   when to use subagents, skills, MCP tools and its task list
 - **Kanban Board** — Visual task management from planning through completion
-- **Agent Terminals** — Parallel AI-powered terminals (12 by default, up to 24) with task context injection
+- **Agent Terminals** — Parallel AI-powered terminals (12 by default, up to 24) with task context injection; each
+  agent window shows whether its Claude Code session is working, needs input or finished (see
+  [Agent window status](#agent-window-status))
 - **Insights** — Chat for exploring a codebase (runs through Claude Code; can't change files) that can also manage
   the project's tasks: Workbench's task tools (`src/main/insights/task-tools.ts`, served over local MCP HTTP by
   `task-tools-server.ts` with a token per chat turn) create, edit, start, stop, retry, move, review, PR, merge, archive
@@ -231,6 +233,17 @@ Creating and merging a PR answer 202 at once and finish in the background (the t
 while one runs or after it fails). Requests whose `Host` header is not an IP address, `localhost` or a `*.ts.net` name
 are refused (DNS rebinding). Upstream divergence is recorded in `docs/DECISIONS.md`.
 
+### Agent window status
+
+Each agent window's header says what its Claude Code session is doing: Working, Needs input (a permission prompt or
+a question form) or Finished (a turn ended while another window was in use; selecting the window clears it). The
+sidebar's Agents row counts the windows that need input or finished. The status is read from the window's xterm, as
+[herdr](https://github.com/herdrdev/herdr) does: Claude Code's title (a spinner while working) and the text on the
+screen (`src/shared/utils/agent-window-status.ts`, patterns adapted from herdr's Apache-2.0 Claude Code manifest).
+Hooks are not used because the window id a hook reports is unreliable (`live-agent/live-agent-relay.ts`).
+`src/renderer/agent-status/` holds the watcher, its store and the badges; project windows report each change over
+`terminal:agentStatus` to `src/main/agent-status/`, which the phone companion reads (`GET .../agents`).
+
 ### Electron MCP (testing the app from a task)
 
 Run `npm run dev` and switch on Electron in Settings > Connectors (or in the task's connectors). Claude Code can
@@ -288,7 +301,7 @@ runs without `CLAUDE_CONFIG_DIR`, keeps its sign-in in `~/.claude.json` and its 
 English is the only supported language. Translation files: `src/shared/i18n/locales/en/*.json`.
 
 **Namespaces:** `common`, `navigation`, `settings`, `dialogs`, `tasks`, `taskReview`, `terminal`, `errors`,
-`welcome`, `companion`.
+`welcome`, `companion`, `agentStatus`.
 
 ```tsx
 import { useTranslation } from 'react-i18next';
