@@ -21,6 +21,10 @@
       "title": "Connectors",
       "description": "Default MCP servers for new tasks"
     },
+    "phone": {
+      "title": "Phone",
+      "description": "Use Workbench from a phone"
+    },
     "devtools": {
       "title": "Developer",
       "description": "CLI tools and framework paths"

@@ -1,0 +1,91 @@
+/**
+ * @vitest-environment jsdom
+ */
+/**
+ * The phone page against a mocked companion API:
+ * - the board opens on Human Review and scrolls that column's button into view
+ * - while a PR action runs in the background, the task screen shows it and disables moves,
+ *   feedback and the PR buttons; a failed action shows its error
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import '../../../shared/i18n';
+import type { TaskDetail, TaskSummary } from '../api';
+
+const api = vi.hoisted(() => ({
+  projects: vi.fn(),
+  tasks: vi.fn(),
+  task: vi.fn(),
+  logs: vi.fn(),
+  action: vi.fn(),
+}));
+vi.mock('../api', () => ({
+  api,
+  getToken: () => 'token',
+  forgetToken: vi.fn(),
+  pair: vi.fn(),
+  UnauthorizedError: class UnauthorizedError extends Error {},
+}));
+
+import { CompanionApp } from '../CompanionApp';
+
+const now = '2026-10-25T09:00:00.000Z';
+const tasks: TaskSummary[] = [
+  { id: '004-merge', title: 'Add CSV export', column: 'human_review', status: 'human_review', prUrl: 'https://github.com/o/r/pull/4', prState: 'open', updatedAt: now },
+  { id: '002-run', title: 'Fix Safari export', column: 'in_progress', status: 'in_progress', updatedAt: now },
+];
+const detail = (phoneAction?: TaskDetail['phoneAction']): TaskDetail => ({
+  ...tasks[0],
+  description: 'Add a CSV export button.',
+  allowedMoves: ['backlog', 'done'],
+  subtasks: [],
+  ...(phoneAction ? { phoneAction } : {}),
+});
+
+const scrollIntoView = vi.fn();
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  localStorage.clear();
+  HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  api.projects.mockResolvedValue([{ id: 'p1', name: 'Workbench' }]);
+  api.tasks.mockResolvedValue(tasks);
+});
+
+describe('board', () => {
+  it('opens on Human Review and scrolls its column button into view', async () => {
+    render(<CompanionApp />);
+    const column = await screen.findByRole('button', { name: /Human Review 1/ });
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(column);
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', inline: 'center' });
+    expect(screen.getByText('Add CSV export')).toBeInTheDocument();
+  });
+});
+
+describe('task screen', () => {
+  async function openTask() {
+    render(<CompanionApp />);
+    (await screen.findByText('Add CSV export')).click();
+  }
+
+  it('disables moves, feedback and the PR buttons while a merge runs in the background', async () => {
+    api.task.mockResolvedValue(detail({ action: 'merge_pull_request', state: 'running', startedAt: now }));
+    await openTask();
+
+    expect(await screen.findByText('Merging the pull request')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Merge pull request' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to Done' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send feedback' })).toBeDisabled();
+  });
+
+  it('offers the merge again with the error after a background merge fails', async () => {
+    api.task.mockResolvedValue(detail({ action: 'merge_pull_request', state: 'failed', error: 'Conflicts remain', startedAt: now }));
+    await openTask();
+
+    expect(await screen.findByText('Merging the pull request failed: Conflicts remain')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Merge pull request' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Move to Done' })).toBeEnabled();
+  });
+});

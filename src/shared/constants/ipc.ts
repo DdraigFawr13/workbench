@@ -259,6 +259,12 @@ export const IPC_CHANNELS = {
   CLAUDE_CODE_GET_INSTALLATIONS: 'claudeCode:getInstallations',
   CLAUDE_CODE_SET_ACTIVE_PATH: 'claudeCode:setActivePath',
 
+  // Phone companion (Settings > Phone)
+  COMPANION_GET_STATUS: 'companion:getStatus',
+  COMPANION_SET_CONFIG: 'companion:setConfig',
+  COMPANION_CREATE_PAIRING_CODE: 'companion:createPairingCode',
+  COMPANION_REVOKE_DEVICE: 'companion:revokeDevice',
+
   // Graphify CLI (memory graph)
   GRAPHIFY_CHECK_VERSION: 'graphify:checkVersion',
   GRAPHIFY_INSTALL: 'graphify:install',

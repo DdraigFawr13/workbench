@@ -1,0 +1,131 @@
+{
+  "settings": {
+    "title": "Phone companion",
+    "description": "See and steer this computer's tasks from a phone browser",
+    "enabled": "Use from a phone",
+    "enabledDescription": "Serve the companion page to paired phones while Workbench runs",
+    "saveFailed": "The setting could not be saved",
+    "status": {
+      "label": "Status",
+      "off": "Off",
+      "running": "Listening on {{urls}}",
+      "error": "Not running: {{error}}"
+    },
+    "listen": {
+      "label": "Reach it through",
+      "localhost": "Tailscale",
+      "network": "Home network only",
+      "localhostDescription": "Only this computer can open the address; Tailscale passes your own devices through with HTTPS",
+      "networkDescription": "Plain HTTP: anyone on the same network can read a phone's token in transit, so use it only on a trusted home network. Windows asks once whether to allow Workbench through Windows Defender Firewall; allow it on private networks only"
+    },
+    "tailscale": {
+      "label": "Tailscale",
+      "description": "Install Tailscale on this computer and the phone and sign in to both with the same account. In the Tailscale admin console, under DNS, switch on MagicDNS and HTTPS certificates; without both, Tailscale serves no https address. Then run this once on this computer and open the https address it prints on the phone"
+    },
+    "port": "Port",
+    "portDescription": "From 1024 to 65535",
+    "devices": {
+      "title": "Paired phones",
+      "pair": "Pair a phone",
+      "pairDescription": "Open the companion address on the phone and type the code shown here",
+      "codeDescription": "Type this code on the phone; it works once, until {{time}}",
+      "createCode": "Show code",
+      "newCode": "New code",
+      "none": "No phones paired",
+      "paired": "Paired {{time}}",
+      "lastSeen": "last used {{time}}",
+      "revoke": "Revoke"
+    }
+  },
+  "page": {
+    "back": "Back",
+    "refresh": "Refresh",
+    "pair": {
+      "title": "Pair with Workbench",
+      "instructions": "On the computer, open Workbench Settings > Phone, select Show code, and type the code here.",
+      "code": "Pairing code",
+      "deviceName": "Name of this phone",
+      "submit": "Pair",
+      "homeScreen": "On iPhone, a page added to the home screen keeps storage separate from Safari. Add the page to the home screen first, then pair from the home screen icon; a pairing made in Safari does not carry over."
+    },
+    "projects": {
+      "title": "Projects",
+      "none": "No projects are open in Workbench.",
+      "switch": "Switch project"
+    },
+    "board": {
+      "empty": "No tasks in this column.",
+      "newTask": "New task"
+    },
+    "reviewReason": {
+      "completed": "Ready for review",
+      "errors": "Failed",
+      "qa_rejected": "Checks failed",
+      "stopped": "Stopped"
+    },
+    "pr": {
+      "open": "PR open",
+      "merged": "PR merged",
+      "closed": "PR closed"
+    },
+    "validation": {
+      "passed": "passed",
+      "failed": "failed",
+      "partial": "partly passed"
+    },
+    "subtask": {
+      "pending": "Not started: {{title}}",
+      "in_progress": "In progress: {{title}}",
+      "completed": "Done: {{title}}",
+      "failed": "Failed: {{title}}"
+    },
+    "task": {
+      "title": "Task",
+      "diff": "{{filesChanged}} files, +{{additions}} -{{deletions}}",
+      "requestChanges": "Request changes",
+      "feedbackPlaceholder": "What should change",
+      "validation": "Validation {{status}}",
+      "checkPassed": "Passed: {{name}}",
+      "checkFailed": "Failed: {{name}}",
+      "finding": "Open finding ({{severity}}): {{description}}",
+      "summary": "Summary",
+      "description": "Description",
+      "steps": "Steps",
+      "triage": "Model {{model}}, effort {{effort}}, cost ${{cost}}",
+      "showLogs": "Show latest log entries",
+      "hideLogs": "Hide log entries",
+      "noLogs": "No log entries yet."
+    },
+    "actions": {
+      "start": "Start",
+      "resume": "Resume",
+      "stop": "Stop",
+      "retry": "Retry from a clean slate",
+      "createPr": "Create pull request",
+      "prCreated": "Creating the pull request. This screen shows the result when it is done.",
+      "mergePr": "Merge pull request",
+      "merged": "Merging the pull request. Conflicts can take some minutes; this screen shows the result when it is done.",
+      "openPr": "Open pull request",
+      "moveTo": "Move to {{column}}",
+      "sendFeedback": "Send feedback",
+      "revising": "Claude Code is applying the feedback.",
+      "running": {
+        "create_pull_request": "Creating the pull request",
+        "merge_pull_request": "Merging the pull request"
+      },
+      "failed": {
+        "create_pull_request": "Creating the pull request failed: {{error}}",
+        "merge_pull_request": "Merging the pull request failed: {{error}}"
+      }
+    },
+    "create": {
+      "title": "New task",
+      "description": "What should be done",
+      "descriptionPlaceholder": "The instructions for Claude Code, with context and acceptance criteria",
+      "titleLabel": "Title (optional)",
+      "titlePlaceholder": "Written from the description when empty",
+      "start": "Start it now",
+      "submit": "Create task"
+    }
+  }
+}
