@@ -1,6 +1,7 @@
 /**
  * Phone companion IPC handlers (Settings > Phone): switch the companion server on or off, pair a
- * phone with a one-time code, and revoke paired phones
+ * phone with a one-time code, and revoke paired phones. Also connects the notifications to the
+ * task states and the agent windows' status.
  */
 
 import { app, ipcMain, type BrowserWindow } from 'electron';
@@ -12,6 +13,11 @@ import type { IPCResult } from '../../shared/types';
 import type { CompanionConfig, CompanionPairingCode, CompanionStatus } from '../../shared/types/companion';
 import { CompanionStore } from '../companion/companion-store';
 import { CompanionServer, companionUrls } from '../companion/companion-server';
+import { CompanionNotifier, agentNotification, taskNotification, testNotification } from '../companion/companion-notifier';
+import { samePath } from '../companion/companion-api';
+import { onAgentWindowStatusChange } from '../agent-status/agent-window-status-store';
+import { taskHooks } from '../task-hooks';
+import { projectStore } from '../project-store';
 import { appLog } from '../app-logger';
 import { safeSendToRenderer } from './utils';
 
@@ -46,12 +52,27 @@ async function applyConfig(): Promise<void> {
 
 export function registerCompanionHandlers(getMainWindow: () => BrowserWindow | null): void {
   store = new CompanionStore(path.join(app.getPath('userData'), 'companion.json'));
+  const notifier = new CompanionNotifier({
+    store,
+    isActive: () => server?.running === true,
+    onError: (error) => appLog.error('[Companion] A notification could not be sent:', error),
+  });
+  taskHooks.on('state', (event) => notifier.notify(taskNotification(event)));
+  onAgentWindowStatusChange((entry, previous) => {
+    const project = entry.projectPath ? projectStore.getProjects().find((candidate) => samePath(candidate.path, entry.projectPath!)) : undefined;
+    void notifier.notify(agentNotification(entry, previous, project));
+  });
   server = new CompanionServer({
     store,
     // The bundled main process runs from out/main; the renderer is built into out/renderer
     rendererDir: path.join(path.dirname(fileURLToPath(import.meta.url)), '../renderer'),
     devServerUrl: is.dev ? process.env['ELECTRON_RENDERER_URL'] : undefined,
     onTasksChanged: (projectId) => safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_LIST_CHANGED, projectId),
+    push: {
+      publicKey: () => notifier.publicKey(),
+      setSubscription: (deviceId, subscription) => store!.setPushSubscription(deviceId, subscription),
+      sendTest: (deviceId) => notifier.notify(testNotification(), deviceId),
+    },
   });
   if (store.getConfig().enabled) void applyConfig();
 

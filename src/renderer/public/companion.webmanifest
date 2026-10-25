@@ -1,0 +1,10 @@
+{
+  "name": "Workbench",
+  "short_name": "Workbench",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#141413",
+  "theme_color": "#141413",
+  "icons": [{ "src": "/companion-icon.png", "sizes": "256x256", "type": "image/png" }]
+}

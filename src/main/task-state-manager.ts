@@ -159,7 +159,7 @@ export class TaskStateManager {
         // Already in human_review (e.g., stage-only merge keeps task in review).
         // Emit status directly since there's no XState transition needed.
         this.emitStatus(taskId, 'human_review', task.reviewReason ?? 'completed', project.id);
-        taskHooks.emit('state', { project, task, status: 'human_review', state: 'human_review' });
+        taskHooks.emit('state', { project, task, status: 'human_review', state: 'human_review', previousState: 'human_review', reviewReason: task.reviewReason ?? 'completed' });
         return true;
       default:
         return false;
@@ -301,7 +301,7 @@ export class TaskStateManager {
 
       this.persistStatus(task, project, status, reviewReason, stateValue, executionPhase);
       this.emitStatus(taskId, status, reviewReason, project.id);
-      taskHooks.emit('state', { project, task, status, state: stateValue });
+      taskHooks.emit('state', { project, task, status, state: stateValue, previousState: lastState, reviewReason });
 
       // Only transitions seen while the app runs (not tasks restored in that state)
       const completed = (stateValue === 'human_review' && reviewReason === 'completed') || stateValue === 'done';

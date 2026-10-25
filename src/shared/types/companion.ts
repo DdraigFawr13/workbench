@@ -22,6 +22,14 @@ export interface CompanionDevice {
   name: string;
   pairedAt: string;
   lastSeenAt?: string;
+  /** Whether the phone receives notifications (it sent a push subscription) */
+  notifications: boolean;
+}
+
+/** A browser's push subscription (PushSubscription.toJSON() without expirationTime) */
+export interface CompanionPushSubscription {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
 }
 
 export interface CompanionPairingCode {

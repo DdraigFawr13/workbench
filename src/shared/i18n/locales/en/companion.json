@@ -16,11 +16,11 @@
       "localhost": "Tailscale",
       "network": "Home network only",
       "localhostDescription": "Only this computer can open the address; Tailscale passes your own devices through with HTTPS",
-      "networkDescription": "Plain HTTP: anyone on the same network can read a phone's token in transit, so use it only on a trusted home network. Windows asks once whether to allow Workbench through Windows Defender Firewall; allow it on private networks only"
+      "networkDescription": "Plain HTTP: anyone on the same network can read a phone's token in transit, so use it only on a trusted home network. Windows asks once whether to allow Workbench through Windows Defender Firewall; allow it on private networks only. Phones get no notifications in this mode, because browsers offer them only to https pages"
     },
     "tailscale": {
       "label": "Tailscale",
-      "description": "Install Tailscale on this computer and the phone and sign in to both with the same account. In the Tailscale admin console, under DNS, switch on MagicDNS and HTTPS certificates; without both, Tailscale serves no https address. Then run this once on this computer and open the https address it prints on the phone"
+      "description": "Install Tailscale on this computer and the phone and sign in to both with the same account. In the Tailscale admin console, under DNS, switch on MagicDNS and HTTPS certificates; without both, Tailscale serves no https address. Then run this once on this computer and open the https address it prints on the phone. Notifications on the phone need this https address; the home network address cannot receive them"
     },
     "port": "Port",
     "portDescription": "From 1024 to 65535",
@@ -34,7 +34,8 @@
       "none": "No phones paired",
       "paired": "Paired {{time}}",
       "lastSeen": "last used {{time}}",
-      "revoke": "Revoke"
+      "revoke": "Revoke",
+      "notifications": "notifications on"
     }
   },
   "page": {
@@ -129,6 +130,37 @@
       "titlePlaceholder": "Written from the description when empty",
       "start": "Start it now",
       "submit": "Create task"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Workbench notifies this phone when a task is ready for review, fails or is paused by a rate limit, when a pull request is merged, and when an agent needs input or finishes.",
+      "on": "Notifications are on for this phone.",
+      "turnOn": "Turn on notifications",
+      "turnOff": "Turn off notifications",
+      "off": "Turned off. This phone receives no notifications.",
+      "blocked": "Notifications are blocked for this page. Allow them in the phone's settings, then try again.",
+      "insecure": "Notifications need the https address from Tailscale. The home network address uses plain HTTP, where the browser offers no notifications.",
+      "iosHomeScreen": "On iPhone, notifications need iOS 16.4 or later and the page added to the home screen: in Safari, select Share, then Add to Home Screen, open the page from the new icon and pair again.",
+      "unsupported": "This browser does not support notifications.",
+      "failed": "Notifications could not be turned on: {{error}}"
+    }
+  },
+  "notifications": {
+    "body": "{{subject}} in {{project}}",
+    "task": {
+      "reviewReady": "Task ready for review",
+      "checksFailed": "Task checks failed",
+      "failed": "Task failed",
+      "rateLimited": "Task paused by a rate limit",
+      "prMerged": "Pull request merged"
+    },
+    "agent": {
+      "needsInput": "Agent needs input",
+      "finished": "Agent finished"
+    },
+    "test": {
+      "title": "Notifications are on",
+      "body": "Workbench notifies this phone when a task or an agent needs you."
     }
   }
 }

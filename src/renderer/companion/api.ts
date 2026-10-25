@@ -113,4 +113,8 @@ export const api = {
     request<LogEntry[]>('GET', `${projectPath(projectId)}/tasks/${encodeURIComponent(taskId)}/logs?limit=${limit}`),
   action: <T = unknown>(projectId: string, action: string, args: Record<string, unknown>) =>
     request<T>('POST', `${projectPath(projectId)}/actions/${action}`, args),
+  /** The key to subscribe with, and whether the computer has this phone's subscription */
+  push: () => request<{ publicKey: string; subscribed: boolean }>('GET', '/api/push'),
+  subscribePush: (subscription: PushSubscriptionJSON) => request<{ subscribed: boolean }>('POST', '/api/push/subscribe', { subscription }),
+  unsubscribePush: () => request<{ subscribed: boolean }>('POST', '/api/push/unsubscribe', {}),
 };

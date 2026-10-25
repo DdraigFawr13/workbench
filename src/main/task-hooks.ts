@@ -4,11 +4,20 @@
  *
  * Kept free of Electron and the app logger so any main-process module can emit hooks.
  */
-import type { Project, Task, TaskStatus } from '../shared/types';
+import type { Project, ReviewReason, Task, TaskStatus } from '../shared/types';
 
 export interface TaskHookEvents {
   /** The task entered a state: its board status and, when the state machine moved it, the machine state */
-  state: { project: Project; task: Task; status: TaskStatus; state?: string };
+  state: {
+    project: Project;
+    task: Task;
+    status: TaskStatus;
+    state?: string;
+    /** The machine state it left (undefined when the machine was just created, e.g. a restored task) */
+    previousState?: string;
+    /** Why it waits in Human Review */
+    reviewReason?: ReviewReason;
+  };
   /** The task's Claude Code session edited files (paths relative to its worktree, forward slashes) */
   'files-edited': { project: Project; task: Task; files: string[] };
 }

@@ -13,6 +13,9 @@
  *   GET  /api/projects/:projectId/tasks/:taskId/logs   its latest log entries (?limit=)
  *   GET  /api/projects/:projectId/agents               its agent windows' status (working, needs input, finished)
  *   POST /api/projects/:projectId/actions/:action      run an action (body: its arguments)
+ *   GET  /api/push                                     the key to subscribe with, and whether this phone is subscribed
+ *   POST /api/push/subscribe                           receive notifications (body: { subscription }); sends a test one
+ *   POST /api/push/unsubscribe                         stop receiving them
  *
  * Creating and merging a PR run Claude Code and can take minutes, longer than a phone keeps a
  * request open. They answer 202 at once and continue in the background; the task's details then
@@ -20,15 +23,16 @@
  */
 
 import path from 'path';
-import type { CompanionDevice } from '../../shared/types/companion';
+import type { CompanionDevice, CompanionPushSubscription } from '../../shared/types/companion';
 import { appLog } from '../app-logger';
 import { runTaskTool } from '../insights/task-tools';
 import { projectStore } from '../project-store';
 import { getAgentWindowStatuses } from '../agent-status/agent-window-status-store';
 import { isWindows } from '../platform';
+import { isPushSubscription } from './companion-store';
 
 /** Whether two project paths name the same folder (case-folded on Windows) */
-const samePath = (a: string, b: string) =>
+export const samePath = (a: string, b: string) =>
   isWindows() ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase() : path.resolve(a) === path.resolve(b);
 
 /**
@@ -77,9 +81,19 @@ export interface CompanionApiResponse {
   body: unknown;
 }
 
+/** Notifications (companion-notifier.ts); absent, the push routes answer 404 */
+export interface CompanionPushRoutes {
+  publicKey: () => string;
+  /** Store the phone's subscription (null removes it); false when the device is gone */
+  setSubscription: (deviceId: string, subscription: CompanionPushSubscription | null) => boolean;
+  /** Send the test notification to one phone */
+  sendTest: (deviceId: string) => Promise<void>;
+}
+
 export interface CompanionApiDeps {
   /** A phone action changed a project's tasks: the desktop board reloads them */
   onTasksChanged: (projectId: string) => void;
+  push?: CompanionPushRoutes;
 }
 
 const ok = (body: unknown): CompanionApiResponse => ({ status: 200, body });
@@ -93,6 +107,7 @@ export async function handleCompanionApi(request: CompanionApiRequest, deps: Com
   if (request.method === 'GET' && resource === 'session' && parts.length === 2) {
     return ok({ device: request.device });
   }
+  if (resource === 'push') return handlePush(request, parts.slice(2), deps.push);
   if (resource !== 'projects') return fail(404, 'Not found');
 
   if (request.method === 'GET' && parts.length === 2) {
@@ -131,6 +146,28 @@ export async function handleCompanionApi(request: CompanionApiRequest, deps: Com
     if (!(COMPANION_ACTIONS as readonly string[]).includes(id)) return fail(403, `"${id}" is not available from the phone`);
     if (BACKGROUND_ACTIONS.includes(id)) return runInBackground(id, request.body, context);
     return run(id, request.body);
+  }
+  return fail(404, 'Not found');
+}
+
+async function handlePush(request: CompanionApiRequest, rest: string[], push: CompanionPushRoutes | undefined): Promise<CompanionApiResponse> {
+  if (!push) return fail(404, 'Not found');
+  if (request.method === 'GET' && rest.length === 0) {
+    return ok({ publicKey: push.publicKey(), subscribed: request.device.notifications });
+  }
+  if (request.method !== 'POST' || rest.length !== 1) return fail(404, 'Not found');
+  if (rest[0] === 'subscribe') {
+    const subscription = request.body.subscription;
+    if (!isPushSubscription(subscription)) return fail(400, 'The push subscription is not valid');
+    if (!push.setSubscription(request.device.id, subscription)) return fail(401, 'This phone is not paired with Workbench');
+    push.sendTest(request.device.id).catch((error: unknown) => {
+      appLog.error(`[companion] The test notification failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+    return ok({ subscribed: true });
+  }
+  if (rest[0] === 'unsubscribe') {
+    push.setSubscription(request.device.id, null);
+    return ok({ subscribed: false });
   }
   return fail(404, 'Not found');
 }

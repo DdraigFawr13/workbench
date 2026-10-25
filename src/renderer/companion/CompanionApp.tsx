@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronDown, ExternalLink, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Bell, ChevronDown, ExternalLink, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { TASK_STATUS_COLUMNS, getTaskColumn, type TaskStatusColumn } from '../../shared/constants/task';
 import type { TaskStatus } from '../../shared/types/task';
 import { formatDateTime } from '../../shared/utils/format-date-time';
@@ -18,6 +18,7 @@ import {
   type LogEntry,
   type TaskSummary,
 } from './api';
+import { isPushOn, onNotificationOpened, pushSupport, turnPushOff, turnPushOn } from './push';
 
 /** How often an open screen refreshes while the page is visible */
 const BOARD_REFRESH_MS = 5000;
@@ -30,6 +31,18 @@ type View =
   | { kind: 'board'; project: CompanionProject }
   | { kind: 'task'; project: CompanionProject; taskId: string }
   | { kind: 'create'; project: CompanionProject };
+
+/** A project and task to open, from a notification's address (`/?project=...&task=...`) */
+interface Target {
+  projectId: string;
+  taskId?: string;
+}
+
+function targetFromUrl(url: string): Target | null {
+  const params = new URL(url, window.location.origin).searchParams;
+  const projectId = params.get('project');
+  return projectId ? { projectId, taskId: params.get('task') ?? undefined } : null;
+}
 
 const columnOf = (task: TaskSummary): TaskStatusColumn => getTaskColumn(task.status as TaskStatus);
 
@@ -71,17 +84,38 @@ function useRefresh<T>(load: () => Promise<T>, onUnauthorized: () => void, inter
 export function CompanionApp() {
   const [paired, setPaired] = useState(() => getToken() !== null);
   const [view, setView] = useState<View>({ kind: 'projects' });
+  const [target, setTarget] = useState<Target | null>(() => targetFromUrl(window.location.href));
 
   const signOut = useCallback(() => {
     forgetToken();
     setPaired(false);
   }, []);
 
+  // A notification opened the page: show its task, then leave the address plain
+  useEffect(() => {
+    if (window.location.search) window.history.replaceState(null, '', '/');
+    return onNotificationOpened((url) => {
+      const next = targetFromUrl(url);
+      if (!next) return;
+      setTarget(next);
+      setView({ kind: 'projects' });
+    });
+  }, []);
+
+  const openProject = useCallback(
+    (project: CompanionProject) => {
+      if (target?.projectId === project.id && target.taskId) setView({ kind: 'task', project, taskId: target.taskId });
+      else setView({ kind: 'board', project });
+      setTarget(null);
+    },
+    [target]
+  );
+
   if (!paired) return <PairScreen onPaired={() => setPaired(true)} />;
 
   switch (view.kind) {
     case 'projects':
-      return <ProjectsScreen onOpen={(project) => setView({ kind: 'board', project })} onUnauthorized={signOut} />;
+      return <ProjectsScreen preferredId={target?.projectId} onOpen={openProject} onUnauthorized={signOut} />;
     case 'board':
       return (
         <BoardScreen
@@ -193,15 +227,94 @@ function PairScreen({ onPaired }: { onPaired: () => void }) {
 }
 
 // =============================================================================
+// Notifications
+// =============================================================================
+
+/** Turn notifications on or off for this phone, or say why it can't receive them */
+function NotificationsPanel({ onUnauthorized }: { onUnauthorized: () => void }) {
+  const { t } = useTranslation('companion');
+  const support = useMemo(pushSupport, []);
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const fail = useCallback(
+    (err: unknown) => {
+      if (err instanceof UnauthorizedError) onUnauthorized();
+      else setMessage(t('page.notifications.failed', { error: err instanceof Error ? err.message : String(err) }));
+    },
+    [onUnauthorized, t]
+  );
+
+  useEffect(() => {
+    if (support !== 'supported') return;
+    isPushOn().then(setOn, fail);
+  }, [support, fail]);
+
+  const toggle = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      if (on) {
+        await turnPushOff();
+        setOn(false);
+        setMessage(t('page.notifications.off'));
+      } else if (await turnPushOn()) {
+        setOn(true);
+      } else {
+        setMessage(t('page.notifications.blocked'));
+      }
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unsupported = {
+    insecure: 'page.notifications.insecure',
+    'ios-home-screen': 'page.notifications.iosHomeScreen',
+    unsupported: 'page.notifications.unsupported',
+  } as const;
+
+  return (
+    <section className="mb-4 flex flex-col gap-3 rounded-xl border border-border px-4 py-3" aria-label={t('page.notifications.title')}>
+      <h2 className="text-sm font-medium">{t('page.notifications.title')}</h2>
+      {support !== 'supported' ? (
+        <p className="text-sm text-muted-foreground">{t(unsupported[support])}</p>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">{t('page.notifications.description')}</p>
+          {on && <p className="text-sm">{t('page.notifications.on')}</p>}
+          {message && <p className="text-sm">{message}</p>}
+          <Button variant={on ? 'outline' : 'default'} onClick={toggle} disabled={busy || on === null}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : on ? t('page.notifications.turnOff') : t('page.notifications.turnOn')}
+          </Button>
+        </>
+      )}
+    </section>
+  );
+}
+
+// =============================================================================
 // Projects and board
 // =============================================================================
 
-function ProjectsScreen({ onOpen, onUnauthorized }: { onOpen: (project: CompanionProject) => void; onUnauthorized: () => void }) {
+function ProjectsScreen({
+  preferredId,
+  onOpen,
+  onUnauthorized,
+}: {
+  /** The project a notification named */
+  preferredId?: string;
+  onOpen: (project: CompanionProject) => void;
+  onUnauthorized: () => void;
+}) {
   const { t } = useTranslation('companion');
   const { data, error } = useRefresh(api.projects, onUnauthorized);
   const opened = useRef(false);
 
-  // Return to the last project, or open the only one
+  // Open the project a notification named, else return to the last project, or open the only one
   useEffect(() => {
     if (!data || opened.current) return;
     let last: string | null = null;
@@ -210,12 +323,15 @@ function ProjectsScreen({ onOpen, onUnauthorized }: { onOpen: (project: Companio
     } catch {
       last = null;
     }
-    const target = data.find((project) => project.id === last) ?? (data.length === 1 ? data[0] : undefined);
+    const target =
+      data.find((project) => project.id === preferredId) ??
+      data.find((project) => project.id === last) ??
+      (data.length === 1 ? data[0] : undefined);
     if (target) {
       opened.current = true;
       onOpen(target);
     }
-  }, [data, onOpen]);
+  }, [data, onOpen, preferredId]);
 
   return (
     <Screen title={t('page.projects.title')}>
@@ -262,6 +378,7 @@ function BoardScreen({
   const { data: agents, reload: reloadAgents } = useRefresh(loadAgents, onUnauthorized);
   const shownAgents = (agents ?? []).filter((agent) => agent.status !== 'idle');
   const [column, setColumn] = useState<TaskStatusColumn | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
   const shownChip = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -295,12 +412,23 @@ function BoardScreen({
           <button type="button" onClick={() => { reload(); reloadAgents(); }} aria-label={t('companion:page.refresh')} className="rounded-lg p-2 hover:bg-accent">
             <RefreshCw className="h-4 w-4" />
           </button>
+          <button
+            type="button"
+            onClick={() => setShowNotifications((shown) => !shown)}
+            aria-label={t('companion:page.notifications.title')}
+            aria-expanded={showNotifications}
+            className={cn('rounded-lg p-2 hover:bg-accent', showNotifications && 'bg-accent')}
+          >
+            <Bell className="h-4 w-4" />
+          </button>
           <button type="button" onClick={onProjects} aria-label={t('companion:page.projects.switch')} className="rounded-lg p-2 hover:bg-accent">
             <ChevronDown className="h-4 w-4" />
           </button>
         </>
       }
     >
+      {showNotifications && <NotificationsPanel onUnauthorized={onUnauthorized} />}
+
       {shownAgents.length > 0 && (
         <section className="mb-4 flex flex-col gap-2" aria-label={t('companion:page.agents.title')}>
           <h2 className="font-mono text-xs text-muted-foreground">{t('companion:page.agents.title')}</h2>

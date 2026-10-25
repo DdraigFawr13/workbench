@@ -56,6 +56,8 @@ export default defineConfig({
         // debug -> ms (used by bundled dependencies)
         'debug',
         'ms',
+        // Web Push for the phone companion's notifications
+        'web-push',
         // XState for task state machine
         'xstate',
       ]

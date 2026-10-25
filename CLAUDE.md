@@ -232,6 +232,11 @@ token; `companion.json` in the app's data folder holds the settings and only the
 Creating and merging a PR answer 202 at once and finish in the background (the task's details carry `phoneAction`
 while one runs or after it fails). Requests whose `Host` header is not an IP address, `localhost` or a `*.ts.net` name
 are refused (DNS rebinding). Upstream divergence is recorded in `docs/DECISIONS.md`.
+Notifications (`companion-notifier.ts`, Web Push through the `web-push` package): the phone switches them on from the
+board's bell button, and its service worker (`src/renderer/public/companion-sw.js`) shows them. The server notifies
+on task states from `taskHooks` (ready for review, checks failed, failed, rate limited, PR merged; never for moves by
+hand or restored tasks) and on agent windows that need input or finish (`onAgentWindowStatusChange`). Push needs the
+https address from `tailscale serve`; on iPhone, iOS 16.4 or later with the page added to the home screen.
 
 ### Agent window status
 
