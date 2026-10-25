@@ -69,6 +69,7 @@ import type {
   TerminalWorktreeResult,
   OtherWorktreeInfo,
 } from './terminal';
+import type { AgentWindowStatusReport } from './agent-status';
 import type {
   ClaudeProfileSettings,
   ClaudeProfile,
@@ -198,6 +199,8 @@ export interface ElectronAPI {
   createTerminal: (options: TerminalCreateOptions) => Promise<IPCResult>;
   destroyTerminal: (id: string) => Promise<IPCResult>;
   sendTerminalInput: (id: string, data: string) => void;
+  /** An agent window's status changed (null: it has none, or it closed) */
+  reportAgentWindowStatus: (id: string, report: AgentWindowStatusReport | null) => void;
   resizeTerminal: (id: string, cols: number, rows: number) => Promise<IPCResult<{ success: boolean }>>;
   invokeCLIInTerminal: (id: string, cwd?: string) => void;
   resumeTaskSessionInTerminal: (id: string, options: TerminalTaskSessionOptions) => void;

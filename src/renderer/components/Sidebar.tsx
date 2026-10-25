@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AgentNodeIcon, GraphIcon, InsightsIcon, KanbanIcon, ProjectIcon, SettingsIcon as Settings } from './icons/app-icons';
 import { useMemoryGraphStore } from '../stores/memory-graph-store';
+import { AgentsAttentionCount } from '../agent-status/AgentsAttentionCount';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import {
@@ -206,10 +207,11 @@ export function Sidebar({
         // Kanban stays available without a project: it hosts the welcome page
         disabled={!selectedProjectId && item.id !== 'kanban'}
         aria-current={isActive ? 'page' : undefined}
-        className={rowClass(isActive)}
+        className={cn(rowClass(isActive), 'relative')}
       >
         {renderRowIcon(item.icon)}
         {!isCollapsed && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
+        {item.id === 'terminals' && <AgentsAttentionCount projectPath={selectedProject?.path} collapsed={isCollapsed} />}
       </button>
     );
 

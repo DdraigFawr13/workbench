@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback, useTerminalStore } from '../../stores/terminal-store';
+import { watchAgentWindow } from '../../agent-status/agent-window-watcher';
 import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
 import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
 import { debounce } from '../../lib/debounce';
@@ -58,6 +59,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const stopWatchingRef = useRef<(() => void) | null>(null);
   const serializeAddonRef = useRef<SerializeAddon | null>(null);
   const commandBufferRef = useRef<string>('');
   const isDisposedRef = useRef<boolean>(false);
@@ -124,6 +126,8 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
     xterm.loadAddon(serializeAddon);
 
     xterm.open(terminalRef.current);
+    // Its Claude Code session's status (working, needs input, finished) for the header and sidebar
+    stopWatchingRef.current = watchAgentWindow(terminalId, xterm, terminalRef.current);
 
     // WebGL acceleration: lazily load the WebGL module and acquire a context.
     // The dynamic import() ensures NO GPU code (WebGL2 probing, context creation)
@@ -624,6 +628,9 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       }
       webglManagerRef.current = null;
     }
+
+    stopWatchingRef.current?.();
+    stopWatchingRef.current = null;
 
     // Dispose addons explicitly before disposing xterm
     // While xterm.dispose() handles loaded addons, explicit disposal ensures

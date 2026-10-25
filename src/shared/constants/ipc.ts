@@ -119,6 +119,7 @@ export const IPC_CHANNELS = {
   TERMINAL_OAUTH_CODE_NEEDED: 'terminal:oauthCodeNeeded',  // Request user to paste OAuth code from browser
   TERMINAL_OAUTH_CODE_SUBMIT: 'terminal:oauthCodeSubmit',  // User submitted OAuth code to send to terminal
   TERMINAL_CLAUDE_BUSY: 'terminal:claudeBusy',  // Claude Code busy state (for visual indicator)
+  TERMINAL_AGENT_STATUS: 'terminal:agentStatus',  // An agent window's status, read from its screen (renderer -> main, for the phone companion)
   TERMINAL_CLAUDE_EXIT: 'terminal:claudeExit',  // Claude Code exited (returned to shell)
   TERMINAL_PROFILE_CHANGED: 'terminal:profileChanged',  // Profile changed, terminals need refresh (main -> renderer)
 

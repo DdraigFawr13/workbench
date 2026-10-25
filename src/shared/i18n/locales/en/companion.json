@@ -53,6 +53,12 @@
       "none": "No projects are open in Workbench.",
       "switch": "Switch project"
     },
+    "agents": {
+      "title": "Agent windows",
+      "working": "Working",
+      "needs-input": "Needs input on the desktop",
+      "finished": "Finished, not yet viewed"
+    },
     "board": {
       "empty": "No tasks in this column.",
       "newTask": "New task"

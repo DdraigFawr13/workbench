@@ -84,6 +84,9 @@ vi.mock('../../../lib/webgl-context-manager', () => ({
   }
 }));
 
+// The status watcher reads the screen of a real xterm; these tests cover the keyboard and WebGL
+vi.mock('../../../agent-status/agent-window-watcher', () => ({ watchAgentWindow: () => () => {} }));
+
 // Mock settings store (for gpuAcceleration setting)
 const mockSettingsStoreState = {
   settings: { gpuAcceleration: 'auto' as string | undefined }

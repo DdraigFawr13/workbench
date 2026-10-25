@@ -1,0 +1,10 @@
+{
+  "working": "Working",
+  "workingDescription": "Claude Code is running a turn",
+  "needs-input": "Needs input",
+  "needs-inputDescription": "Claude Code is asking a question or for permission",
+  "finished": "Finished",
+  "finishedDescription": "Claude Code finished a turn while another window was in use. Select this window to clear it",
+  "needAttention_one": "{{count}} agent window needs attention",
+  "needAttention_other": "{{count}} agent windows need attention"
+}
