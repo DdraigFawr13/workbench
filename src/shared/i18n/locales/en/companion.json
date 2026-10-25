@@ -54,10 +54,7 @@
       "switch": "Switch project"
     },
     "agents": {
-      "title": "Agent windows",
-      "working": "Working",
-      "needs-input": "Needs input on the desktop",
-      "finished": "Finished, not yet viewed"
+      "title": "agents"
     },
     "board": {
       "empty": "No tasks in this column.",

@@ -235,9 +235,11 @@ are refused (DNS rebinding). Upstream divergence is recorded in `docs/DECISIONS.
 
 ### Agent window status
 
-Each agent window's header says what its Claude Code session is doing: Working, Needs input (a permission prompt or
-a question form) or Finished (a turn ended while another window was in use; selecting the window clears it). The
-sidebar's Agents row counts the windows that need input or finished. The status is read from the window's xterm, as
+Each agent window's header says what its Claude Code session is doing, in herdr's style (a dot in the state's color and
+the state in lower-case monospace): working, needs input (a permission prompt or a question form), finished (a turn
+ended while another window was in use; selecting the window clears it) or idle. The sidebar lists the project's agent
+windows and their state under "agents" (selecting a row opens the window); collapsed, a dot on the Agents icon marks
+windows that need input or finished. The status is read from the window's xterm, as
 [herdr](https://github.com/herdrdev/herdr) does: Claude Code's title (a spinner while working) and the text on the
 screen (`src/shared/utils/agent-window-status.ts`, patterns adapted from herdr's Apache-2.0 Claude Code manifest).
 Hooks are not used because the window id a hook reports is unreliable (`live-agent/live-agent-relay.ts`).

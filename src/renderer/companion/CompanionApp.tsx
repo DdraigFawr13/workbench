@@ -7,6 +7,7 @@ import { formatDateTime } from '../../shared/utils/format-date-time';
 import { Button } from '../components/ui/button';
 import { MarkdownContent } from '../components/ui/markdown-content';
 import { cn } from '../lib/utils';
+import { AgentStatusIndicator } from '../agent-status/AgentStatusIndicator';
 import {
   api,
   forgetToken,
@@ -302,14 +303,16 @@ function BoardScreen({
     >
       {shownAgents.length > 0 && (
         <section className="mb-4 flex flex-col gap-2" aria-label={t('companion:page.agents.title')}>
-          <h2 className="text-sm font-semibold">{t('companion:page.agents.title')}</h2>
-          <ul className="flex flex-col gap-2">
+          <h2 className="font-mono text-xs text-muted-foreground">{t('companion:page.agents.title')}</h2>
+          {/* herdr's agent list: the window's title, then its state */}
+          <ul className="flex flex-col divide-y divide-border rounded-xl border border-border font-mono">
             {shownAgents.map((agent) => (
-              <li key={agent.id} className="rounded-xl border border-border px-4 py-3">
-                <div className="text-sm font-medium">{agent.title}</div>
-                <div className={cn('mt-1 text-xs', agent.status === 'needs-input' ? 'text-warning' : 'text-muted-foreground')}>
-                  {[t(`companion:page.agents.${agent.status}`), formatDateTime(agent.since)].join(' · ')}
+              <li key={agent.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm">{agent.title}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(agent.since)}</div>
                 </div>
+                <AgentStatusIndicator status={agent.status} />
               </li>
             ))}
           </ul>

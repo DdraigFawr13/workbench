@@ -64,7 +64,7 @@ describe('board', () => {
     ]);
     render(<CompanionApp />);
     expect(await screen.findByText('Docs window')).toBeInTheDocument();
-    expect(screen.getByText(/Needs input on the desktop/)).toBeInTheDocument();
+    expect(screen.getByText('needs input')).toBeInTheDocument();
     expect(screen.queryByText('Idle window')).not.toBeInTheDocument();
   });
 
